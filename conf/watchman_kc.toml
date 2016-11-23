@@ -1,0 +1,104 @@
+#A logstreamer is a watcher list
+[Logstreamer]
+#
+     [Logstreamer.KC]
+        # wating 15s , then rescan this directory.
+        rescan_interval  = "15s"
+
+        # wating 1s , for wating the other colleague(collector)
+        ticker_interval  = 1
+
+        #what time range your needed file is ?
+        #suport units:
+        #s : second  m : minutes  h : hour, d : day  w : week
+        oldest_duration  ="900d"
+
+        #journey file's filename and position
+        journal_directory  = "logstreamer"
+
+        # A directory in which log files reside
+        log_directory = ['D:\work\work_repo\mabotech\EIM\MTS\MTSlogs\K&Ctest']
+
+        #regular expression of log file. for getting right files.
+        file_match =  'log\d+-\d+'
+
+        #get task infomation, if it's in the path string.
+        #string is splited by sep symbol(system wise) from 0 on
+        task_position = -1
+
+        #specified the plugin name
+        processor = "KC"
+
+        #specifed the mesurement name in fluxdb database.
+        measurement = "MTS_KC"
+
+[processor]
+    [processor.KC]
+            # the path points to process plugin.
+            processor_path = "watcher_output.kc"
+
+            # the real Outputer name
+            class = "Outputer"
+
+            # KC status set.
+            [processor.KC.status]
+
+            run = ['Password accepted']
+            stop = ['Shutdown K&C console']
+
+            #some user specified tags
+            [processor.KC.config]
+
+                nodename = ""
+
+                eqpt_no = "marshall_kc"
+
+#log configuration
+[log]
+    # boolean type, if true ,the debug information will print sys.stdout.
+    # if false, the debug information will print to fill we specified.
+    debug = true
+
+    # the derectory in which our log file reside.
+    logfile = "logs/watchman_debug.log"
+
+    # backup log_fie maximum number is 5.
+    backup_count = 5
+
+    # A log files maximum size.if size exceed this, bakcup it.
+    max_size = 300
+
+    # determine the debug level you want to print.
+    level = 0
+
+    # format your debug information.
+    # for more infomation, please checkout this site:
+    #       http://logbook.readthedocs.io/en/stable/
+    format_string = '({record.time:%Y-%m-%d %H:%M:%S.%f%z}) {record.level_name},[cls,method name:{record.channel}][line:{record.lineno}]: {record.message}'
+#___________________________________________________________________________
+[define]
+
+        [define.status]
+            error = ['Error','error','Sys']
+            running = ['Running']
+            stop   = ['Stop','Hold','Aborted','End of test',"Entering Stopped"]
+            unknown =[]
+
+
+        [define.level]
+            Warning = 4
+            Information = 6
+            debug = 7
+            notice = 5
+            Error = 3
+            crit = 2
+            alert = 1
+            emerg = 0
+            # N/A = 8
+#_____________________________________________________________________________
+[influxdb]
+    host = "127.0.0.1"
+    port = 8086
+    username ="root"
+    password = "root"
+    db = "marshall"

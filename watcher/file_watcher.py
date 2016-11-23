@@ -14,6 +14,7 @@ import re
 import time
 import traceback
 import logbook
+
 log = logbook.Logger("watcher")
 
 
@@ -23,13 +24,12 @@ class Watcher(object):
     def __init__(self, item, app_conf):
         """ init """
         watcher_conf = app_conf['Logstreamer'][item]
-        self.error_count = 0 #
+        self.error_count = 0  #
         self.item = item
         self.rescan_interval = int(watcher_conf["rescan_interval"][:-1])
         self.ticker_interval = watcher_conf["ticker_interval"]
         self.log_directory = watcher_conf["log_directory"]
         self.file_match_pattern = watcher_conf["file_match"]
-        self.inject_tags = watcher_conf["tags"]
         self.task_position = watcher_conf["task_position"]
         self.ext = ".jrn"
         self.matched_files = []
@@ -86,11 +86,11 @@ class Watcher(object):
         while True:
             # find all files with file_patern under log_directory
             files = Watcher.find_files(self.log_directory, self.file_match_pattern)
-
+            log.debug('filename matched {} files'.format(len(files)))
             # filter files
             self.matched_files = self.filter(files)
 
-            log.debug('matched {} files'.format(len(self.matched_files)))
+            log.debug('time range matched {} files'.format(len(self.matched_files)))
 
             # wating some seconds updates.
             time.sleep(self.rescan_interval)
@@ -114,8 +114,9 @@ class Watcher(object):
                     if message == "":
                         pass
                     else:
+                        # TODO: inject_tag use should be fixed.
                         rtn, error_dict = self.processer.message_process(message, task,
-                                                                         self.measurement, self.inject_tags)
+                                                                         self.measurement, inject_tags=None)
                         if rtn != 0:
                             log.error(error_dict)
 
@@ -151,7 +152,10 @@ class Watcher(object):
         """
         fn = os.path.basename(filename)
         file_size = os.stat(filename)[6]
+
         present_point = self.get_seek(fn)
+        # # FIXME:this is for debug !!!
+        # present_point = 0
         if file_size == present_point:
             return 'pass'
         with open(filename, 'r') as for_read:
@@ -191,7 +195,6 @@ class Watcher(object):
                     if re.search(file_pattern, one_file):
                         log_file.append(root + os.sep + one_file)
         return log_file
-
 
     @staticmethod
     def get_task_name(position, filename):
