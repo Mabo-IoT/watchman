@@ -55,12 +55,13 @@ class Outputer(InfluxDBBase):
 
         status = self.get_status(message)
         script_name = Outputer.get_script_name(message)
+        # task = self.get_task_name()
         # through this function,we can append extra info from the conf files.
         payload = self.construct_json(time, message, measurement, inject_tags,
                                       status, script_name, task=None)
         # print payload['data']['fields']['status']
         self.send([payload["data"]])
-
+        log.debug('eps_kc sent !')
         return 0, None
 
     # def construct_json(self, time, message, item, inject_tags, status, task):
@@ -98,9 +99,4 @@ class Outputer(InfluxDBBase):
         if 'script' in log_msg:
             script_name = log_msg.split(' ', 5)[-1].split('/')[-1].split('.')[0]
             return script_name
-        # def calculate_status(log_msg, status_set):
-        #     for one_set in status_set:
-        #         if log_msg.startswith(tuple(status_set[one_set])):
-        #             status = one_set
-        #             return status
-        #     return None
+

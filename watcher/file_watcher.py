@@ -122,8 +122,9 @@ class Watcher(object):
 
                             # raise (Exception("msg processer has issue"))
                     self.error_count = 0
-            except:
+            except Exception as e:
                 self.error_count += 1
+                log.error(e)
                 log.error(traceback.format_exc())
                 if self.error_count > 3:
                     time.sleep(30)
@@ -154,7 +155,7 @@ class Watcher(object):
         file_size = os.stat(filename)[6]
 
         present_point = self.get_seek(fn)
-        # # FIXME:this is for debug !!!
+        # FIXME:this is for debug !!!
         # present_point = 0
         if file_size == present_point:
             return 'pass'
@@ -201,6 +202,7 @@ class Watcher(object):
         filename_split = filename.split(os.sep)
         task = filename_split[position]
         if '.log' in task:
+            log.debug('task name is {}'.format(task))
             return task[:-4]
         return task
 
