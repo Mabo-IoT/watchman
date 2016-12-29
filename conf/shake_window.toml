@@ -1,0 +1,83 @@
+#A logstreamer is a watcher list
+[Logstreamer]
+#
+     [Logstreamer.Shakewindow]
+        # wating 15s , then rescan this directory.
+        rescan_interval  = "15s"
+
+        # wating 1s , for wating the other colleague(collector)
+        ticker_interval  = 1
+
+        #what time range your needed file is ?
+        #suport units:
+        #s : second  m : minutes  h : hour, d : day  w : week
+        oldest_duration  ="20d"
+
+        #journey file's filename and position
+        journal_directory  = "logstreamer"
+
+        # A directory in which log files reside
+        # log_directory = ['D:\work\work_repo\watchman\testlog']
+        log_directory = ['D:\work\work_stuff\shakewindow']
+
+        #regular expression of log file. for getting right files.
+        file_match =  'log.txt'
+
+        #get task infomation, if it's in the path string.
+        #string is splited by sep symbol(system wise) from 0 on
+        task_position = -1
+
+        #specified the plugin name
+        processor = "ShakeOutput"
+
+        #specifed the mesurement name in fluxdb database.
+        measurement = "Shake_window"
+
+[processor]
+    [processor.ShakeOutput]
+            # the path points to process plugin.
+            processor_path = "watcher_output.sw"
+
+            # the real Outputer name
+            class = "Outputer"
+
+            [processor.ShakeOutput.config]
+                nodename = 'hello'
+                eqpt_no = 'PATAC_hehe'
+                [processor.ShakeOutput.config.status]
+                    ready = 2
+                    start = 0
+                    run   = 1
+                    close = -1
+
+
+
+#log configuration
+[log]
+    # boolean type, if true ,the debug information will print sys.stdout.
+    # if false, the debug information will print to fill we specified.
+    debug = true
+
+    # the derectory in which our log file reside.
+    logfile = "logs/watchman_debug.log"
+
+    # backup log_fie maximum number is 5.
+    backup_count = 5
+
+    # A log files maximum size.if size exceed this, bakcup it.
+    max_size = 300
+
+    # determine the debug level you want to print.
+    level = 0
+
+    # format your debug information.
+    # for more infomation, please checkout this site:
+    #       http://logbook.readthedocs.io/en/stable/
+    format_string = '({record.time:%Y-%m-%d %H:%M:%S.%f%z}) {record.level_name},[channel:{record.channel}][file_name:{record.filename}][line:{record.lineno}]: {record.message}'
+
+[influxdb]
+    host = "127.0.0.1"
+    port = 8086
+    username ="root"
+    password = "root"
+    db = "marshall"
