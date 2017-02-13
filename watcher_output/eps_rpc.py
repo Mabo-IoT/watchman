@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-import pendulum
 import socket
-from logbook import Logger
+
+import pendulum
 from influxdb import InfluxDBClient
+from logbook import Logger
 
 log = Logger('eps_rpc')
 

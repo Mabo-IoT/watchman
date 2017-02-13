@@ -51,14 +51,17 @@ class Outputer(InfluxDBBase):
         self.get_date(msg_line)
         start_character = 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
         str_character = tuple((str(i) for i in start_character))
-        if msg_line.startswith(str_character):
-            data = msg_line.split(' ', 3)
-            _, time, code, message = data
-            status = Outputer.calculate_status(message)
-            level = Outputer.calculate_level(code)
-            data = status, level, message, code
-            payload = self.construct_json(time, data, measurement, task="zan shi wei ding")
-        else:
+        try:
+            if msg_line.startswith(str_character):
+                data = msg_line.split(' ', 3)
+                _, time, code, message = data
+                status = Outputer.calculate_status(message)
+                level = Outputer.calculate_level(code)
+                data = status, level, message, code
+                payload = self.construct_json(time, data, measurement, task="zan shi wei ding")
+            else:
+                return 0, None
+        except Exception as e:
             return 0, None
 
         # through this function,we can append extra info from the conf files.
@@ -69,7 +72,6 @@ class Outputer(InfluxDBBase):
         return 0, None
 
     def construct_json(self, time, data, measurement, task):
-
         fields = {"Msg": data[2],
                   "status": data[0],
                   "Code": data[-1],
