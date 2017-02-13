@@ -13,6 +13,7 @@ import os
 import re
 import time
 import traceback
+
 import logbook
 
 log = logbook.Logger("watcher")
@@ -159,7 +160,7 @@ class Watcher(object):
         # present_point = 0
         if file_size == present_point:
             return 'pass'
-        with open(filename, 'r') as for_read:
+        with open(filename, 'r', errors='replace') as for_read:
             for_read.seek(present_point)
             contents = for_read.read(file_size - present_point)
         present_point = file_size
