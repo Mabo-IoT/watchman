@@ -166,10 +166,8 @@ class Outputer(InfluxDBBase):
                                 "fields": fields,
                                 "time": 1000000 * int(data["time"]) + self.seq % 1000,
                                 "measurement": measurement}}
-        log.debug(">>>" * 20)
-        log.debug(payload["data"])
+
         log.debug("this is data we send to influxdb ")
-        log.debug(">>>" * 20)
         self.send([payload["data"]])
         # with open('data.txt', 'wt') as f:
         #     f.write(str(payload['data']))
