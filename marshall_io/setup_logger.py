@@ -13,6 +13,7 @@ for more infomation, check out this official site:
 """
 import os
 import sys
+
 from logbook import StreamHandler, RotatingFileHandler
 from logbook import set_datetime_format
 
@@ -27,15 +28,16 @@ def setup_logger(conf):
     :param conf: a dict of logbook conf.
 
     """
+    level_dict = {'notset': 10, 'debug': 11, 'info': 12, 'warning': 13, 'error': 14, 'critical': 15}
     debug = conf['debug']
     logfile = conf['logfile']
     backup_count = conf['backup_count']
     max_size = conf['max_size']
     format_string = conf['format_string']
-    level = conf['level']
+    level = level_dict[conf['level']]
 
     if debug:
-        StreamHandler(sys.stdout, format_string=format_string).push_application()
+        StreamHandler(sys.stdout, format_string=format_string, level=level).push_application()
     else:
 
         full_log_path = os.path.abspath(logfile)

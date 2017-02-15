@@ -1,23 +1,13 @@
 # -*- coding: utf-8 -*-
 import re
-import socket
 import time
+import traceback
 
-import requests
-import requests.exceptions
+import pendulum
 from influxdb import InfluxDBClient
 from logbook import Logger
 
-"""
-Stmgr Logstreamer
-
-"""
-
-__author__ = "majj"
-__copyright__ = "majj"
-__license__ = "MIT"
-__version__ = "0.0.3"
-log = Logger("http.st")
+log = Logger("mts_station_mpt")
 
 
 class StmgrDecoder(object):
@@ -33,42 +23,43 @@ class StmgrDecoder(object):
         self.logstr = ""
         self.status = None
         self.status_map = {'running': 1, 'error': 2, 'stop': 0, 'unknown': 3}
+        self.status_set = self.conf['status']
 
     def build_fields(self, line):
         match_obj = self.compile_obj.search(line)
         if match_obj is not None:
-            all_groups = match_obj.groups()
-            log_time_str, level_msg, logger_name, log_msg = all_groups
+            log_time_str, level_msg, logger_name, log_msg = all_groups = match_obj.groups()
+
             logger_name = logger_name.split(" ")[0]
+
             level = self.conf['level'].get(level_msg, 8)
+
             logtime = time.strptime(log_time_str, '%m/%d/%Y %H:%M:%S')
-            # timestr = time.strftime("%Y-%m-%d %H:%M:%S", logtime)
+
             timestamp = time.mktime(logtime)
-            # self.status = self.conf['define']['status'].get(log_msg, None)
-            self.status_set = self.conf['status']
 
             str_status = StmgrDecoder.calculate_status(log_msg, self.status_set)
             if str_status is not None:
                 self.status = self.status_map[str(str_status)]
                 if level == 3:
                     self.status = 2
-                    # print self.status, log_msg
-                    # print self.status
             else:
                 self.status = None
+
             if self.last_timestamp == 0:
                 self.last_timestamp = timestamp
                 duration = 0
             else:
                 duration = timestamp - self.last_timestamp
                 self.last_timestamp = timestamp
+
             # build message
             data = {
                 "duration": duration, "time": timestamp,
                 "logger": logger_name, "level": level, "msg": log_msg,
                 "status": self.status}
             if self.status is None:
-                log.debug("don't has status,we del it")
+                log.debug("don't has status, del it")
                 del data["status"]
             return data
         else:
@@ -103,38 +94,34 @@ class Outputer(InfluxDBBase):
     def __init__(self, conf, processor):
         config_conf = conf['processor'][processor]['config']
         self.seq = 0
-        self.HEADERS = {'content-type': 'application/json', 'accept': 'json', 'User-Agent': 'mabo'}
-        self.hostname = socket.gethostname()
-        self._session = requests.Session()
-
         self.nodename = config_conf["nodename"]
         self.eqpt_no = config_conf["eqpt_no"]
         self.parser = StmgrDecoder(conf['processor'][processor])
         super(Outputer, self).__init__(conf)
 
-    def message_process(self, msgline, task, measurement, inject_tags):
-        error_dict = dict()
+    def message_process(self, msgline, task, measurement):
+
         if msgline.startswith('***') or msgline.isalpha():
-            return 0, None
+            return 0
         try:
             data = self.parser.build_fields(msgline)
         except Exception as e:
-            print(e)
-            # error_dict['info'] = ('http_st_102', msgline)
-            # return 1, error_dict
+            log.error(e)
+            log.error(traceback.format_exc())
+            return 1
+
         self.seq += 1
 
         if data is None:
             # parse msgline failed
 
-            tags = {"hostname": self.hostname, "node": self.nodename, "task": task, "seq": self.seq}
-            if inject_tags is not None:
-                tags.update(inject_tags)
+            tags = {"node": self.nodename, "task": task, "seq": self.seq}
+
             fields = {"line": msgline, "datetime": time.strftime("%Y-%m-%d %H:%M:%S")}
             # measurement: issueline
             payload = {"data": {
                 "tags": tags, "fields": fields,
-                "time": int(time.time()), "measurement": "issueline"}}
+                "time": pendulum.now().timestamp * 1000000, "measurement": "issueline"}}
         else:
             # parse msgline success
             if "status" in data:
@@ -142,7 +129,7 @@ class Outputer(InfluxDBBase):
                     "status": data["status"],
                     "Msg": data["msg"],
                     "logger": data["logger"],
-                    "hostname": self.hostname,
+
                     "task": task,
                     "seq": self.seq,
                     "FLevel": data["level"]}
@@ -150,7 +137,7 @@ class Outputer(InfluxDBBase):
                 fields = {
                     "Msg": data["msg"],
                     "logger": data["logger"],
-                    "hostname": self.hostname,
+
                     "task": task,
                     "seq": self.seq,
                     "FLevel": data["level"]
@@ -160,18 +147,15 @@ class Outputer(InfluxDBBase):
                 "Level": data["level"],
                 "eqpt_no": self.eqpt_no,
             }
-            if inject_tags is not None:
-                tags.update(inject_tags)
+
             payload = {"data": {"tags": tags,
                                 "fields": fields,
                                 "time": 1000000 * int(data["time"]) + self.seq % 1000,
                                 "measurement": measurement}}
 
-        log.debug("this is data we send to influxdb ")
+        log.info("send data to influxdb")
         self.send([payload["data"]])
-        # with open('data.txt', 'wt') as f:
-        #     f.write(str(payload['data']))
-        return 0, None
+        return 0
 
 
 def test():
@@ -192,7 +176,7 @@ def test():
         fh = open(pth + logfile, 'r')
         i = i + 1
         for msgline in fh:
-            out_tester.message_process(msgline, 'task', 'MTS_Station', 'full')
+            out_tester.message_process(msgline, 'task', 'MTS_Station', )
 
 
 if __name__ == "__main__":

@@ -10,14 +10,16 @@ __copyright__ = "Marshall"
 __version__ = "0.0.0"
 """
 
-
 import os
 import threading
+
+from logbook import Logger
+
 from marshall_io.read import get_conf
 from marshall_io.setup_logger import setup_logger
-from logbook import Logger
 from watcher.file_watcher import Watcher
-log = Logger('main')
+
+log = Logger('watchman')
 
 
 def start_app(app_conf):
@@ -27,7 +29,7 @@ def start_app(app_conf):
     """
     logstreamers = app_conf['Logstreamer']
     for logstreamer in logstreamers:
-            start_watcher(logstreamer=logstreamer, conf=app_conf)
+        start_watcher(logstreamer=logstreamer, conf=app_conf)
 
 
 def start_watcher(**kwargs):
@@ -43,13 +45,12 @@ def start_watcher(**kwargs):
     watch_t.setDaemon(True)
     watch_t.start()
 
-    log.debug('a watcher.watch is running!')
-
+    log.info('monitoring this direcotory.')
     timer_t = threading.Thread(target=watcher.collector, name="timer-%s" % kwargs['logstreamer'], args=[])
     timer_t.setDaemon(True)
     timer_t.start()
 
-    log.debug('a watcher.timer is running!')
+    log.info('collector is working on it.')
 
 
 def main():

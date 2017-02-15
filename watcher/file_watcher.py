@@ -16,7 +16,7 @@ import traceback
 
 import logbook
 
-log = logbook.Logger("watcher")
+log = logbook.Logger("file_watcher")
 
 
 class Watcher(object):
@@ -87,19 +87,20 @@ class Watcher(object):
         while True:
             # find all files with file_patern under log_directory
             files = Watcher.find_files(self.log_directory, self.file_match_pattern)
-            log.debug('filename matched {} files'.format(len(files)))
+            log.info('filename matched {} files.'.format(len(files)))
             # filter files
             self.matched_files = self.filter(files)
 
-            log.debug('time range matched {} files'.format(len(self.matched_files)))
+            log.info('time range matched {} files.'.format(len(self.matched_files)))
 
             # wating some seconds updates.
             time.sleep(self.rescan_interval)
 
     def _watch(self):
         """
-
-        :return:
+        私有函数
+        按照journey文件的位置读取相应的日志文件内容
+        :return: None
         """
         for filename in self.matched_files:
             contents = self.read_contents(filename)
@@ -115,13 +116,10 @@ class Watcher(object):
                     if message == "":
                         pass
                     else:
-                        # TODO: inject_tag use should be fixed.
-                        rtn, error_dict = self.processer.message_process(message, task,
-                                                                         self.measurement, inject_tags=None)
+                        rtn = self.processer.message_process(message, task, self.measurement, )
                         if rtn != 0:
-                            log.error(error_dict)
+                            log.error('something wrong in log_processor.')
 
-                            # raise (Exception("msg processer has issue"))
                     self.error_count = 0
             except Exception as e:
                 self.error_count += 1
@@ -131,16 +129,17 @@ class Watcher(object):
                     time.sleep(30)
 
     def watch(self):
-        """real worker
-        if the collector didn't work timely(of course he is a lazy guy),
-        i wait him for one sencond ,and then do my job.
+        """读log日志，分行交给processor处理
+
         """
         while True:
             try:
                 self._watch()
             except Exception as ex:
+                log.error('error in reading log file... ')
                 log.error(traceback.format_exc())
                 log.error(ex)
+            log.info('wating {}s for re-reading.'.format(self.ticker_interval))
             time.sleep(self.ticker_interval)
 
     def read_contents(self, filename):
@@ -157,14 +156,17 @@ class Watcher(object):
 
         present_point = self.get_seek(fn)
         # FIXME:this is for debug !!!
-        # present_point = 0
+        present_point = 0
         if file_size == present_point:
+            log.debug('file_size = present_point')
             return 'pass'
         with open(filename, 'r', errors='replace') as for_read:
             for_read.seek(present_point)
             contents = for_read.read(file_size - present_point)
+
         present_point = file_size
         self.set_seek(fn, present_point)
+
         return contents
 
     def filter(self, files):
@@ -203,7 +205,7 @@ class Watcher(object):
         filename_split = filename.split(os.sep)
         task = filename_split[position]
         if '.log' in task:
-            log.debug('task name is {}'.format(task))
+            log.info('task name is {}'.format(task[:-4]))
             return task[:-4]
         return task
 
