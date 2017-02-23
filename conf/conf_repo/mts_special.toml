@@ -79,12 +79,12 @@
     max_size = 300
 
     # determine the debug level you want to print.
-    level = 0
+    level = 'debug'
 
     # format your debug information.
     # for more infomation, please checkout this site:
     #       http://logbook.readthedocs.io/en/stable/
-    format_string = '({record.time:%Y-%m-%d %H:%M:%S.%f%z}) {record.level_name},[channel:{record.channel}][file_name:{record.filename}][line:{record.lineno}]: {record.message}'
+    format_string = '({record.time:%m-%d %H:%M:%S}){record.level_name},channel:{record.channel},line_{record.lineno}: {record.message}'
 
 [influxdb]
     host = "localhost"

@@ -15,6 +15,9 @@ import time
 import traceback
 
 import logbook
+import msgpack
+
+from marshall_io.databse_io import RedisClient
 
 log = logbook.Logger("file_watcher")
 
@@ -39,6 +42,9 @@ class Watcher(object):
         # key is the one of the python plugin. s.t : MTSHisOutput   MTSLogOutput
         self.processer = get_processor(watcher_conf['processor'], app_conf)
         self.logstreamer = "logstreamer"
+        self.redis = RedisClient(app_conf['data_output']['redis'])
+        self.redis.load_script(app_conf['data_output']['redis']['lua'])
+        self.output = app_conf['data_output']['which']
         check_path("logstreamer")
 
     def set_seek(self, file_name, seek):
@@ -94,19 +100,26 @@ class Watcher(object):
             log.info('time range matched {} files.'.format(len(self.matched_files)))
 
             # wating some seconds updates.
+            log.info('wating {}s for re scanning.'.format(self.rescan_interval))
             time.sleep(self.rescan_interval)
 
     def _watch(self):
         """
         私有函数
         按照journey文件的位置读取相应的日志文件内容
+
+        调用message_process方法进行真正的解析。
+        message： 日志文件的每一行
+        task： 这条日志隶属于什么任务
+        measurement： 会传递到哪张表
+
         :return: None
         """
         for filename in self.matched_files:
             contents = self.read_contents(filename)
             if contents == 'pass':
                 name = os.path.basename(filename)
-                log.debug('{} read all'.format(name))
+                log.info('{} read all'.format(name))
                 continue
 
             task = Watcher.get_task_name(self.task_position, filename)
@@ -116,9 +129,11 @@ class Watcher(object):
                     if message == "":
                         pass
                     else:
-                        rtn = self.processer.message_process(message, task, self.measurement, )
+                        # rtn = self.processer.message_process(message, task, self.measurement, )
+                        influx_json = self.processer.message_process(message, task, self.measurement, )
+                        rtn = self.send(influx_json, method=self.output)
                         if rtn != 0:
-                            log.error('something wrong in log_processor.')
+                            log.error('something wrong in sender.')
 
                     self.error_count = 0
             except Exception as e:
@@ -155,8 +170,8 @@ class Watcher(object):
         file_size = os.stat(filename)[6]
 
         present_point = self.get_seek(fn)
-        # FIXME:this is for debug !!!
-        present_point = 0
+
+        # present_point = 0  # FIXME:this is for debug !!!
         if file_size == present_point:
             log.debug('file_size = present_point')
             return 'pass'
@@ -208,6 +223,28 @@ class Watcher(object):
             log.info('task name is {}'.format(task[:-4]))
             return task[:-4]
         return task
+
+    def send(self, json_data, method):
+        if method == 'redis':
+            timestamp, fields, measurement, tags, eqpt_no = json_data['time'], json_data['fields'], json_data[
+                'measurement'], json_data['tags'], json_data['tags']['eqpt_no']
+            fields = pack_to_byte(fields)
+            measurement = pack_to_byte(measurement)
+            tags = pack_to_byte(tags)
+            eqpt_no = pack_to_byte(tags)
+
+            info = self.redis.enqueue(eqpt_no, timestamp, tags, fields, measurement)
+            log.info(info)
+            return 0
+        # if method == 'influxdb':
+
+        # rtn = 0
+
+        return 0
+
+
+def pack_to_byte(raw):
+    return msgpack.packb(raw)
 
 
 def check_path(logstreamer_path):

@@ -28,7 +28,7 @@ def setup_logger(conf):
     :param conf: a dict of logbook conf.
 
     """
-    level_dict = {'notset': 10, 'debug': 11, 'info': 12, 'warning': 13, 'error': 14, 'critical': 15}
+    level_dict = {'notset': 9, 'debug': 10, 'info': 11, 'warning': 12, 'error': 13, 'critical': 14}
     debug = conf['debug']
     logfile = conf['logfile']
     backup_count = conf['backup_count']
