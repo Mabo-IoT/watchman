@@ -19,7 +19,8 @@ local tags =ARGV[2]
 local fields = ARGV[3]
 local measurement = ARGV[4]
 --how much longer you want your time range is ???
-local time_range = 30
+--because the time unit is μs, the time_range varialbe should be multiplied by 100000.
+local time_range = 30*1000000
 
 local function threshold (fields, timestamp, time_range)
 --    parameters:
@@ -55,6 +56,7 @@ end
 
 --for using two user variables f_flag and t_flag.
 local f_flag = nil;local t_flag = nil
+
 f_flag, t_flag = threshold(fields, timestamp, time_range)
 
 if f_flag == true then

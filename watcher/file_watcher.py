@@ -17,7 +17,7 @@ import traceback
 import logbook
 import msgpack
 
-from marshall_io.databse_io import RedisClient
+from marshall_io.databse_io import RedisClient, InfluxDBBase
 
 log = logbook.Logger("file_watcher")
 
@@ -39,12 +39,24 @@ class Watcher(object):
         self.matched_files = []
         self.oldest_duration = watcher_conf.get('oldest_duration', "31d")
         self.measurement = watcher_conf["measurement"]
+
         # key is the one of the python plugin. s.t : MTSHisOutput   MTSLogOutput
         self.processer = get_processor(watcher_conf['processor'], app_conf)
+
         self.logstreamer = "logstreamer"
-        self.redis = RedisClient(app_conf['data_output']['redis'])
-        self.redis.load_script(app_conf['data_output']['redis']['lua'])
+
+        # output tools
         self.output = app_conf['data_output']['which']
+
+        # redis initialize.
+        if self.output == 'redis':
+            self.redis = RedisClient(app_conf['data_output']['redis'])
+            self.redis.load_script(app_conf['data_output']['redis']['lua'])
+
+        # influxdb initialize
+        if self.output == 'influxdb':
+            self.influx = InfluxDBBase(app_conf['data_output']['influxdb'])
+
         check_path("logstreamer")
 
     def set_seek(self, file_name, seek):
@@ -171,7 +183,7 @@ class Watcher(object):
 
         present_point = self.get_seek(fn)
 
-        # present_point = 0  # FIXME:this is for debug !!!
+        present_point = 0  # FIXME:this is for debug !!!
         if file_size == present_point:
             log.debug('file_size = present_point')
             return 'pass'
@@ -234,13 +246,12 @@ class Watcher(object):
             eqpt_no = pack_to_byte(tags)
 
             info = self.redis.enqueue(eqpt_no, timestamp, tags, fields, measurement)
-            log.info(info)
+            log.info('send data to redis,{}'.format(info))
             return 0
-        # if method == 'influxdb':
-
-        # rtn = 0
-
-        return 0
+        if method == 'influxdb':
+            info = self.influx.send([json_data])
+            log.info('send data to inflxudb, {}'.format(info))
+            return 0
 
 
 def pack_to_byte(raw):

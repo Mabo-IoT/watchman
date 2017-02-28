@@ -86,9 +86,20 @@
     #       http://logbook.readthedocs.io/en/stable/
     format_string = '({record.time:%m-%d %H:%M:%S}){record.level_name},channel:{record.channel},line_{record.lineno}: {record.message}'
 
-[influxdb]
-    host = "localhost"
-    port = 8086
-    username ="root"
-    password = "root"
-    db = "marshall"
+[data_output]
+
+# specified the output tools, redis or influxdb.
+    which = 'redis'
+
+    [data_output.influxdb]
+        host = "localhost"
+        port = 8086
+        username ="root"
+        password = "root"
+        db = "marshall"
+
+    [data_output.redis]
+        host = 'localhost'
+        port = 6379
+        db   = 10
+        lua  = 'D:\project\watchman_marshall\lua_script\imtech.lua'

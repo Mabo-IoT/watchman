@@ -129,10 +129,12 @@ class Outputer(InfluxDBBase):
             if inject_tags is not None:
                 tags.update(inject_tags)
             fields = {"line": msgline, "datetime": time.strftime("%Y-%m-%d %H:%M:%S")}
+
             # measurement: issueline
             post_data = {"tags": tags, "fields": fields, "time": int(time.time()), "measurement": "issueline_rpc"}
             log.debug("issue_line rpc:")
             error_dict['info'] = ('http_his_130', msgline)
+
             self.send([post_data])
             # with open('data_his.txt', 'wt') as f:
             #     f.write(str(post_data))
@@ -199,38 +201,3 @@ def del_null_fields(fields):
         del fields[key]
     return fields
 
-
-def test():
-    import toml
-    with open("watchman.toml") as conf_file:
-        config = toml.loads(conf_file.read())
-
-    # # print(config['MTSLogOutput'])
-    # outputer_config = config['MTSLogOutput']
-    out_tester = Outputer(config, 'MTSHisOutput')
-    # msgline = '''(06/04/2016 01:11:38) Information [MPT Runtime] "Entering Stopped"'''
-    # out_tester.message_process(msgline)
-    # return 0
-
-    pth = "F:\\logs\\"
-    # logs = glob.glob("C:\\MTS 793\\Controllers\\FlexTest GT\\Config\\*.log")
-    logs = ['History_Report.txt']
-    i = 0
-    for logfile in logs:
-        # print "this is log {0}".format(i + 1)
-        # print"log name :{0}".format(logfile)
-        # print "**" * 30
-        fh = open(pth + logfile, 'r')
-        #         # print(logfile)
-        for msgline in fh:
-            #             # print(".")
-            out_tester.message_process('', msgline.strip())
-            # return 0
-            # fh = open("C:\\MTS 793\\Controllers\\FlexTest GT\\Config\\Try_arm_7_13_ch11.log",'r')
-            # for msgline in fh:
-            #             # print(".")
-            #    out_tester.message_process(msgline)
-
-
-if __name__ == "__main__":
-    test()

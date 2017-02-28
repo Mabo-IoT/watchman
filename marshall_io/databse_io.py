@@ -78,15 +78,17 @@ class InfluxDBBase(object):
     def __init__(self, config):
         """ init """
         log.debug("init InfluxDBBase...")
-        self.config = config["influxdb"]
-        self.client = InfluxDBClient(self.config['host'],
-                                     self.config['port'], self.config['username'],
-                                     self.config['password'], self.config['db'])
+        self.client = InfluxDBClient(config['host'],
+                                     config['port'], config['username'],
+                                     config['password'], config['db'])
+
+    def write(self, data_dict):
+        self.client.write(data_dict)
 
     def send(self, json_body):
         """ write point """
 
-        self.client.write_points(json_body, time_precision='u')
+        return self.client.write_points(json_body, time_precision='u')
 
 
 if __name__ == "__main__":

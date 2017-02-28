@@ -4,7 +4,6 @@ import time
 import traceback
 
 import pendulum
-from influxdb import InfluxDBClient
 from logbook import Logger
 
 log = Logger("mts_station_mpt")
@@ -59,7 +58,7 @@ class StmgrDecoder(object):
                 "logger": logger_name, "level": level, "msg": log_msg,
                 "status": self.status}
             if self.status is None:
-                log.debug("don't has status, del it")
+                log.info("don't has status, del it")
                 del data["status"]
             return data
         else:
@@ -74,43 +73,20 @@ class StmgrDecoder(object):
         return None
 
 
-class InfluxDBBase(object):
-    """ influxdb lib """
-
-    def __init__(self, config):
-        """ init """
-        log.debug("init InfluxDBBase...")
-        self.config = config["influxdb"]
-        self.client = InfluxDBClient(self.config['host'],
-                                     self.config['port'], self.config['username'],
-                                     self.config['password'], self.config['db'])
-
-    def send(self, json_body):
-        """ write point """
-        self.client.write_points(json_body, time_precision='u')
-
-
-class Outputer(InfluxDBBase):
+class Outputer(object):
     def __init__(self, conf, processor):
         config_conf = conf['processor'][processor]['config']
         self.seq = 0
         self.nodename = config_conf["nodename"]
         self.eqpt_no = config_conf["eqpt_no"]
         self.parser = StmgrDecoder(conf['processor'][processor])
-        super(Outputer, self).__init__(conf)
 
     def message_process(self, msgline, task, measurement):
 
-        if msgline.startswith('***') or msgline.isalpha():
-            return 0
-        try:
-            data = self.parser.build_fields(msgline)
-        except Exception as e:
-            log.error(e)
-            log.error(traceback.format_exc())
-            return 1
-
+        data = self.check_valid(msgline)
         self.seq += 1
+        if data == 0 or data == 1:
+            return data
 
         if data is None:
             # parse msgline failed
@@ -119,9 +95,11 @@ class Outputer(InfluxDBBase):
 
             fields = {"line": msgline, "datetime": time.strftime("%Y-%m-%d %H:%M:%S")}
             # measurement: issueline
-            payload = {"data": {
-                "tags": tags, "fields": fields,
-                "time": pendulum.now().timestamp * 1000000, "measurement": "issueline"}}
+            influx_json = {
+                "tags": tags,
+                "fields": fields,
+                "time": pendulum.now().timestamp * 1000000,
+                "measurement": "issueline"}
         else:
             # parse msgline success
             if "status" in data:
@@ -148,36 +126,22 @@ class Outputer(InfluxDBBase):
                 "eqpt_no": self.eqpt_no,
             }
 
-            payload = {"data": {"tags": tags,
-                                "fields": fields,
-                                "time": 1000000 * int(data["time"]) + self.seq % 1000,
-                                "measurement": measurement}}
+            influx_json = {"tags": tags,
+                           "fields": fields,
+                           "time": 1000000 * int(data["time"]) + self.seq % 1000,
+                           "measurement": measurement}
 
-        log.info("send data to influxdb")
-        self.send([payload["data"]])
-        return 0
+        return influx_json
 
-
-def test():
-    import toml
-    with open("watchman.toml") as conf_file:
-        config = toml.loads(conf_file.read())
-    out_tester = Outputer(config, 'MTSLogOutput')
-    pth = "C:\\MTS 793\\Controllers\\PATAC_FT\\Config\\"
-    logs = ['Spindle_Direct_38401000.log', 'Spindle_Matrix_38401.log', 'Spindle_Matrix_with LR000.log',
-            'Spindle_Matrix_with LR001.log']
-    i = 0
-    for logfile in logs:
-        # print "this is log {0}".format(i + 1)
-        # print"log name :{0}".format(logfile)
-        # print "**" * 30
-        if i == 4:
-            break
-        fh = open(pth + logfile, 'r')
-        i = i + 1
-        for msgline in fh:
-            out_tester.message_process(msgline, 'task', 'MTS_Station', )
-
-
-if __name__ == "__main__":
-    test()
+    def check_valid(self, msgline):
+        if msgline.startswith('***') or msgline.isalpha():
+            log.info('unexpected msg_line, pass.')
+            return 0
+        try:
+            data = self.parser.build_fields(msgline)
+        except Exception as e:
+            log.info('can\'t parse this msg_line.')
+            log.error(e)
+            log.error(traceback.format_exc())
+            return 1
+        return data
