@@ -98,7 +98,7 @@ class Outputer(object):
             influx_json = {
                 "tags": tags,
                 "fields": fields,
-                "time": pendulum.now().timestamp * 1000000,
+                "time": pendulum.now().int_timestamp * 1000000,
                 "measurement": "issueline"}
         else:
             # parse msgline success

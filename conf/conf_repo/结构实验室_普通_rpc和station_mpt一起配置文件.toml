@@ -10,7 +10,7 @@
         #what time range your needed file is ?
         #suport units:
         #s : second  m : minutes  h : hour, d : day  w : week
-        oldest_duration  ="1000d"
+        oldest_duration  ="30d"
 
         #journey file's filename and position
         journal_directory  = "logstreamer"
@@ -18,12 +18,12 @@
         # A directory in which log files reside
         # log_directory = ['D:\work\work_repo\watchman\testlog']
 #        log_directory = ['D:\work\work_stuff\log\mts\Specimens']
-#        log_directory = ['D:\work\work_stuff\log\mts\Config']
-        log_directory = ['']
+        log_directory = ['D:\work\work_stuff\log\mts\Config']
+
 
         #regular expression of log file. for getting right files.
-#        file_match =  '.*\.log'
-        file_match = '123'
+        file_match =  '.*\.log'
+
 
         #get task infomation, if it's in the path string.
         #string is splited by sep symbol(system wise) from 0 on
@@ -34,6 +34,11 @@
 
         #specifed the mesurement name in fluxdb database.
         measurement = "MTS_Station"
+
+        #specifed the tags attached to the data under this directory.
+        [Logstreamer.Station_MPT.user_tag]
+            source = 'front'
+
 
      [Logstreamer.RPC]
         # wating 15s , then rescan this directory.
@@ -51,8 +56,8 @@
         journal_directory  = "logstreamer"
 
         # A directory in which log files reside.
-        log_directory = ['D:\work\work_repo\watchman\testlog\K216 Front Suspension - 20160319']
-
+#        log_directory = ['D:\work\work_repo\watchman\testlog\K216 Front Suspension - 20160319']
+        log_directory = []
         #regular expression of log file. for getting right files.
         file_match =  'History_Report.txt'
 
@@ -65,6 +70,10 @@
 
         #specifed the mesurement name in fluxdb database.
         measurement = "MTS_RPC"
+
+        [Logstreamer.RPC.user_tag]
+            source = 'full'
+
 
 [processor]
     [processor.MTS_Station_and_MPT]

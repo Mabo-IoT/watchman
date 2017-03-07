@@ -39,6 +39,8 @@ class Watcher(object):
         self.matched_files = []
         self.oldest_duration = watcher_conf.get('oldest_duration', "31d")
         self.measurement = watcher_conf["measurement"]
+        self.user_tag = watcher_conf['user_tag']
+        self.user_tag = watcher_conf['user_tag']
 
         # key is the one of the python plugin. s.t : MTSHisOutput   MTSLogOutput
         self.processer = get_processor(watcher_conf['processor'], app_conf)
@@ -141,8 +143,10 @@ class Watcher(object):
                     if message == "":
                         pass
                     else:
-                        # rtn = self.processer.message_process(message, task, self.measurement, )
+
                         influx_json = self.processer.message_process(message, task, self.measurement, )
+                        influx_json['tags'].update(self.user_tag)
+
                         rtn = self.send(influx_json, method=self.output)
                         if rtn != 0:
                             log.error('something wrong in sender.')
@@ -183,7 +187,7 @@ class Watcher(object):
 
         present_point = self.get_seek(fn)
 
-        present_point = 0  # FIXME:this is for debug !!!
+        # present_point = 0  # FIXME:this is for debug !!!
         if file_size == present_point:
             log.debug('file_size = present_point')
             return 'pass'
