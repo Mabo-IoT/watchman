@@ -76,18 +76,18 @@ class Outputer(object):
                            "time": 1000000 * int(timestamp) + self.seq % 1000,
                            "measurement": measurement}
 
-            return influx_json
+            return 0, 'process successful', influx_json
 
         else:
             self.seq += 1
-            tags = {"node": self.nodename, "task": task, "seq": self.seq}
+            tags = {"node": self.nodename}
 
             fields = {"line": msgline, "datetime": time.strftime("%Y-%m-%d %H:%M:%S")}
 
             # measurement: issueline
-            influx_json = {"tags": tags, "fields": fields, "time": int(time.time()), "measurement": "issueline_rpc"}
+            influx_json = {"tags": tags, "fields": fields, "time": int(time.time()), "measurement": "new_issueline_rpc"}
             log.debug("issue_line rpc:")
-            return influx_json
+            return 1, 'wrong format.', influx_json
 
     def len3(self, data, task):
         tags = {

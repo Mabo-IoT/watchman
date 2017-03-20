@@ -1,68 +1,102 @@
 # -*- coding: utf-8 -*-
 import re
 import time
-import traceback
 
-import pendulum
 from logbook import Logger
 
 log = Logger("mts_station_mpt")
 
 
-class StmgrDecoder(object):
-    """ parser
+class msg_parser(object):
+    """
+    msgline parser.
     """
 
-    def __init__(self, conf):
-        self.conf = conf
+    def __init__(self):
         rawstr = r'^\((.*)\) (.*) \[(.*)\] "(.*)"'
         self.compile_obj = re.compile(rawstr)
-        self.last_timestamp = 0
-        self.p = 0
-        self.logstr = ""
+
+
+class Outputer(object):
+    def __init__(self, conf, processor):
+        config_conf = conf['processor'][processor]['config']
+        self.seq = 0
+        self.nodename = config_conf["nodename"]
+        self.eqpt_no = config_conf["eqpt_no"]
+
+        # get a parser.
+        self.parser = msg_parser()
+
+        # for status.
         self.status = None
         self.status_map = {'running': 1, 'error': 2, 'stop': 0, 'unknown': 3}
-        self.status_set = self.conf['status']
+        self.status_set = conf['processor'][processor]['status']
 
-    def build_fields(self, line):
-        match_obj = self.compile_obj.search(line)
-        if match_obj is not None:
-            log_time_str, level_msg, logger_name, log_msg = all_groups = match_obj.groups()
+        # for level
+        self.level = conf['processor'][processor]['level']
 
-            logger_name = logger_name.split(" ")[0]
+        # for recording
+        self.last_timestamp = 0
 
-            level = self.conf['level'].get(level_msg, 8)
+    def message_process(self, msgline, task, measurement):
+        """接受一条日志，解析完成后，取得相应信息，组成influxdb
+        所需字典，返回。
 
-            logtime = time.strptime(log_time_str, '%m/%d/%Y %H:%M:%S')
+        :param msgline: 日志
+        :param task: 本次实验任务名
+        :param measurement: 此实验的表名
+        :return: 以influxdb line protocal 组成的字典
+        """
 
-            timestamp = time.mktime(logtime)
+        not_valid = Outputer.check_valid(msgline)
+        if not_valid:
+            influx_json = {
+                "fields": {'msg': msgline},
+                "time": 1000000 * int(time.time()),
+                "measurement": 'new_issueline'}
+            return 1, 'wrong format.', influx_json
 
-            str_status = StmgrDecoder.calculate_status(log_msg, self.status_set)
-            if str_status is not None:
-                self.status = self.status_map[str(str_status)]
-                if level == 3:
-                    self.status = 2
-            else:
-                self.status = None
+        some_data = self.process_data(msgline)
+        if some_data is None:
+            influx_json = {
+                "fields": {'msg': msgline},
+                "time": 1000000 * int(time.time()),
+                "measurement": 'new_issueline'}
+            return 1, 'wrong format.', influx_json
 
-            if self.last_timestamp == 0:
-                self.last_timestamp = timestamp
-                duration = 0
-            else:
-                duration = timestamp - self.last_timestamp
-                self.last_timestamp = timestamp
+        data = self.build_fields(some_data)
 
-            # build message
-            data = {
-                "duration": duration, "time": timestamp,
-                "logger": logger_name, "level": level, "msg": log_msg,
-                "status": self.status}
-            if self.status is None:
-                log.info("don't has status, del it")
-                del data["status"]
-            return data
+        # construct influx json.
+        if "status" in data:
+            fields = {
+                "status": data["status"],
+                "Msg": data["msg"],
+                "logger": data["logger"],
+
+                "task": task,
+                "seq": self.seq,
+                "FLevel": data["level"]}
         else:
-            return None
+            fields = {
+                "Msg": data["msg"],
+                "logger": data["logger"],
+
+                "task": task,
+                "seq": self.seq,
+                "FLevel": data["level"]
+
+            }
+        tags = {
+            "Level": data["level"],
+            "eqpt_no": self.eqpt_no,
+        }
+
+        influx_json = {"tags": tags,
+                       "fields": fields,
+                       "time": 1000000 * int(data["time"]) + self.seq % 1000,
+                       "measurement": measurement}
+
+        return 0, 'process successful', influx_json
 
     @staticmethod
     def calculate_status(log_msg, status_set):
@@ -72,76 +106,63 @@ class StmgrDecoder(object):
                 return status
         return None
 
+    def build_fields(self, *args):
+        """get raw message, return food influx_json.
+        :param args:
+        :return: dict, influx_json
+        """
+        timestamp, level_msg, logger_name, log_msg = args[0]
 
-class Outputer(object):
-    def __init__(self, conf, processor):
-        config_conf = conf['processor'][processor]['config']
-        self.seq = 0
-        self.nodename = config_conf["nodename"]
-        self.eqpt_no = config_conf["eqpt_no"]
-        self.parser = StmgrDecoder(conf['processor'][processor])
+        level = self.level.get(level_msg, 8)
 
-    def message_process(self, msgline, task, measurement):
+        str_status = Outputer.calculate_status(log_msg, self.status_set)
 
-        data = self.check_valid(msgline)
-        self.seq += 1
-        if data == 0 or data == 1:
-            return data
-
-        if data is None:
-            # parse msgline failed
-
-            tags = {"node": self.nodename, "task": task, "seq": self.seq}
-
-            fields = {"line": msgline, "datetime": time.strftime("%Y-%m-%d %H:%M:%S")}
-            # measurement: issueline
-            influx_json = {
-                "tags": tags,
-                "fields": fields,
-                "time": pendulum.now().int_timestamp * 1000000,
-                "measurement": "issueline"}
+        if str_status is not None:
+            self.status = self.status_map[str(str_status)]
+            if level == 3:
+                self.status = 2
         else:
-            # parse msgline success
-            if "status" in data:
-                fields = {
-                    "status": data["status"],
-                    "Msg": data["msg"],
-                    "logger": data["logger"],
+            self.status = None
 
-                    "task": task,
-                    "seq": self.seq,
-                    "FLevel": data["level"]}
-            else:
-                fields = {
-                    "Msg": data["msg"],
-                    "logger": data["logger"],
+        # for recoding how long between this message and the former.
+        if self.last_timestamp == 0:
+            self.last_timestamp = timestamp
+            duration = 0
+        else:
+            duration = timestamp - self.last_timestamp
+            self.last_timestamp = timestamp
 
-                    "task": task,
-                    "seq": self.seq,
-                    "FLevel": data["level"]
+        # build message
+        data = {
+            "duration": duration, "time": timestamp,
+            "logger": logger_name, "level": level, "msg": log_msg,
+            "status": self.status}
+        if self.status is None:
+            del data["status"]
 
-                }
-            tags = {
-                "Level": data["level"],
-                "eqpt_no": self.eqpt_no,
-            }
+        return data
 
-            influx_json = {"tags": tags,
-                           "fields": fields,
-                           "time": 1000000 * int(data["time"]) + self.seq % 1000,
-                           "measurement": measurement}
+    def process_data(self, msgline):
+        is_match = self.parser.compile_obj.search(msgline)
+        if is_match is not None:
+            time_str, level_msg, logger_name, log_msg = all_groups = is_match.groups()
 
-        return influx_json
+            # make time_stamp
+            logtime = time.strptime(time_str, '%m/%d/%Y %H:%M:%S')
+            timestamp = time.mktime(logtime)
 
-    def check_valid(self, msgline):
+            # exclude no used info
+            log_msg = log_msg.strip('"')
+
+            return timestamp, level_msg, logger_name, log_msg
+        else:
+            return None
+
+    @staticmethod
+    def check_valid(msgline):
+
         if msgline.startswith('***') or msgline.isalpha():
             log.info('unexpected msg_line, pass.')
-            return 0
-        try:
-            data = self.parser.build_fields(msgline)
-        except Exception as e:
-            log.info('can\'t parse this msg_line.')
-            log.error(e)
-            log.error(traceback.format_exc())
-            return 1
-        return data
+            return True
+        else:
+            return False

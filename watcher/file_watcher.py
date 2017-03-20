@@ -57,9 +57,15 @@ class Watcher(object):
 
         # influxdb initialize
         if self.output == 'influxdb':
+            self.influx_conf = app_conf['data_output']['influxdb']
             self.influx = InfluxDBBase(app_conf['data_output']['influxdb'])
 
         check_path("logstreamer")
+
+    def re_connect_influxdb(self):
+        # influxdb initialize
+        if self.output == 'influxdb':
+            self.influx = InfluxDBBase(self.influx_conf)
 
     def set_seek(self, file_name, seek):
         """
@@ -137,27 +143,26 @@ class Watcher(object):
                 continue
 
             task = Watcher.get_task_name(self.task_position, filename)
-            try:
-                for line in contents.split('\n'):
-                    message = line.strip()
-                    if message == "":
-                        pass
-                    else:
 
-                        influx_json = self.processer.message_process(message, task, self.measurement, )
+            for line in contents.split('\n'):
+                message = line.strip()
+
+                if message == "":
+                    continue
+                else:
+
+                    process_rtn, info, influx_json = self.processer.message_process(message, task,
+                                                                                    self.measurement, )
+                    if process_rtn == 1:
+                        log.error(info)
+                        self.send(influx_json, method=self.output)
+                        # for debuging use
+                        # with open('D:\work\work_stuff\log\mts\something_wrong.txt', 'a') as f:
+                        #     f.write(message+'\n'+filename+'\n-----------------\n')
+
+                    if process_rtn == 0:
                         influx_json['tags'].update(self.user_tag)
-
-                        rtn = self.send(influx_json, method=self.output)
-                        if rtn != 0:
-                            log.error('something wrong in sender.')
-
-                    self.error_count = 0
-            except Exception as e:
-                self.error_count += 1
-                log.error(e)
-                log.error(traceback.format_exc())
-                if self.error_count > 3:
-                    time.sleep(30)
+                        self.send(influx_json, method=self.output)
 
     def watch(self):
         """读log日志，分行交给processor处理
@@ -170,7 +175,7 @@ class Watcher(object):
                 log.error('error in reading log file... ')
                 log.error(traceback.format_exc())
                 log.error(ex)
-            log.info('wating {}s for re-reading.'.format(self.ticker_interval))
+            log.info('wating{}s,re processing log'.format(self.ticker_interval))
             time.sleep(self.ticker_interval)
 
     def read_contents(self, filename):
@@ -187,11 +192,12 @@ class Watcher(object):
 
         present_point = self.get_seek(fn)
 
-        # present_point = 0  # FIXME:this is for debug !!!
+        # present_point = 0  # FIXME:this is for debuging !!!
         if file_size == present_point:
             log.debug('file_size = present_point')
             return 'pass'
-        with open(filename, 'r', errors='replace') as for_read:
+
+        with open(filename, 'r', errors='ignore') as for_read:
             for_read.seek(present_point)
             contents = for_read.read(file_size - present_point)
 
@@ -253,8 +259,13 @@ class Watcher(object):
             log.info('send data to redis,{}'.format(info))
             return 0
         if method == 'influxdb':
-            info = self.influx.send([json_data])
-            log.info('send data to inflxudb, {}'.format(info))
+            try:
+                info = self.influx.send([json_data])
+                log.info('send data to inflxudb.{}, {}'.format(json_data['measurement'], info))
+
+            except ConnectionError as e:
+                log.error(e)
+                log.error('remote server error')
             return 0
 
 
