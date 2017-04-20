@@ -1,9 +1,8 @@
-from logbook import Logger
 import socket
-import os
+
 import pendulum
-import requests
 from influxdb import InfluxDBClient
+from logbook import Logger
 
 log = Logger('k&C_post')
 
@@ -99,4 +98,3 @@ class Outputer(InfluxDBBase):
         if 'script' in log_msg:
             script_name = log_msg.split(' ', 5)[-1].split('/')[-1].split('.')[0]
             return script_name
-

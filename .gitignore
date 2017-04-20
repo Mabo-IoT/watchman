@@ -24,3 +24,4 @@ logs/
 logstreamer/
 *.exe
 *.spec
+conf/watchman.toml
