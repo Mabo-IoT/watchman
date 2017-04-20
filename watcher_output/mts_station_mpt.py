@@ -166,3 +166,5 @@ class Outputer(object):
             return True
         else:
             return False
+
+# fixme :RPC也要分前悬后悬的分离。未做

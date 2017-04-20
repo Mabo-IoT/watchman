@@ -2,6 +2,8 @@
 Creator: Marshall Fate
 Date: 2017/3/15
 Time: 12:04
+Usage:  newest_log.py -n 2 D:\work\work_stuff\log\mts .*\.txt
+        newest_log.py -n (number) (direcotory_path) (regular expression) [-s] [store_path]
 
 this cript is used for finding the newest log file 's directory
 so ,we don't need to find it manually.
@@ -15,6 +17,8 @@ for organized as option script. command line option.
 import argparse
 import os
 import re
+import time
+from time import localtime
 
 
 def find_files_with_mtime(log_directory, file_pattern):
@@ -30,10 +34,13 @@ def find_files_with_mtime(log_directory, file_pattern):
             for one_file in files:
                 if re.search(file_pattern, one_file):
                     abs_filename = root + os.sep + one_file
-                    yield abs_filename, os.stat(abs_filename).st_mtime
+                    mk_timestamp = os.stat(abs_filename).st_mtime
+                    time_local = localtime(mk_timestamp)
+                    dt = time.strftime("%Y-%m-%d %H:%M:%S", time_local)
+                    yield abs_filename, dt
 
 
-class Finder(object):
+class Finder:
     def __init__(self):
         parser = argparse.ArgumentParser(
             description='find N newest file under certain directory with ceratain pattern.')
@@ -44,18 +51,16 @@ class Finder(object):
                             help='path of directory you want to store', )
         self.namespace = parser.parse_args()
 
-
     def run(self):
         num, log_directory, pattern = self.namespace.the_first_n
         store_path = self.namespace.store_path
         # find file
-        files = list(find_files_with_mtime([log_directory,], pattern))
+        files = list(find_files_with_mtime([log_directory, ], pattern))
         # sort it.
-        if num >= len(files):
+        if int(num) >= len(files):
             self.sorted_files = sorted(files, key=lambda files: files[1], reverse=True)
         else:
             self.sorted_files = sorted(files, key=lambda files: files[1], reverse=True)[:int(num)]
-
 
         if store_path is not None:
             with open('newest_log.txt', 'w') as f:
@@ -65,6 +70,8 @@ class Finder(object):
         else:
             for one in self.sorted_files:
                 print(one)
+
+
 if __name__ == '__main__':
     finder = Finder()
     finder.run()

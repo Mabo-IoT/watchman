@@ -1,0 +1,26 @@
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / package
+build/
+dist/
+sdist/
+*.eggs-info/
+*.egg-info/
+
+# pycharm stuff
+.idea/
+
+# jupyter notebook stuff
+*.ipynb
+.ipynb_checkpoints/
+
+# watchman stuff
+*.ico
+logs/
+logstreamer/
+*.exe
+*.spec
