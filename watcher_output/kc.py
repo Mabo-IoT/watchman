@@ -25,6 +25,13 @@ class Outputer:
         :param measurement: 此实验的表名
         :return: 以influxdb line protocal 组成的字典
         """
+        not_valid = Outputer.check_valid(msgline)
+        if not_valid:
+            influx_json = {
+                "fields": {'msg': msgline},
+                "time": 1000000 * int(time.time()),
+                "measurement": 'new_issueline'}
+            return 1, 'wrong format.', influx_json
 
         log_list = msgline.split(' ', 5)  # separate message and time
         time_str = ''.join(log_list[:4])
@@ -79,3 +86,12 @@ class Outputer:
         if 'script' in log_msg:
             script_name = log_msg.split(' ', 5)[-1].split('/')[-1].split('.')[0]
             return script_name
+
+    @staticmethod
+    def check_valid(msgline):
+
+        if msgline[0].isalpha():
+            log.info('unexpected msg_line, pass.')
+            return True
+        else:
+            return False
