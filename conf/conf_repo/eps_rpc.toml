@@ -32,6 +32,9 @@
         #specifed the mesurement name in fluxdb database.
         measurement = "EPS_RPC"
 
+        [Logstreamer.EPS_RPC.user_tag]
+
+
 [processor]
     [processor.EPS_RPC]
             # the path points to process plugin.
@@ -44,19 +47,9 @@
             #some user specified tags
             [processor.EPS_RPC.config]
 
-                nodename = ""
+                nodename = "mabo_01"
 
                 eqpt_no = "EPS_RPC"
-
-
-
-
-
-
-
-
-
-
 
 #log configuration
 [log]
@@ -74,16 +67,30 @@
     max_size = 300
 
     # determine the debug level you want to print.
-    level = 5
+    # notset < debug < info < warning < error < critical
+    level = 'debug'
 
     # format your debug information.
     # for more infomation, please checkout this site:
     #       http://logbook.readthedocs.io/en/stable/
-    format_string = '({record.time:%Y-%m-%d %H:%M:%S.%f%z}) {record.level_name},[cls,method name:{record.channel}][line:{record.lineno}]: {record.message}'
+    format_string = '({record.time:%m-%d %H:%M:%S}){record.level_name},channel:{record.channel},line_{record.lineno}: {record.message}'
 
-[influxdb]
-    host = "127.0.0.1"
-    port = 8086
-    username ="root"
-    password = "root"
-    db = "marshall"
+
+
+[data_output]
+
+# specified the output tools, redis or influxdb.
+    which = 'influxdb'
+
+    [data_output.influxdb]
+        host = "localhost"
+        port = 8085
+        username ="root"
+        password = "root"
+        db = "marshall"
+
+    [data_output.redis]
+        host = 'localhost'
+        port = 6379
+        db   = 10
+        lua  = 'D:\project\watchman_marshall\lua_script\imtech.lua'
