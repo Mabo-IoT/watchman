@@ -1,0 +1,113 @@
+#A logstreamer is a watcher list
+[Logstreamer]
+     [Logstreamer.Damper]
+        # wating 15s , then rescan this directory.
+        rescan_interval  = "15s"
+
+        # wating 1s , for wating the other colleague(collector)
+        ticker_interval  = 1
+
+        #what time range your needed file is ?
+        #suport units:
+        #s : second  m : minutes  h : hour, d : day  w : week
+        oldest_duration  ="30d"
+
+        #journey file's filename and position
+        journal_directory  = "logstreamer"
+
+        # A directory in which log files reside
+        log_directory = ['D:\work\work_stuff\log\damper_log']
+
+
+
+        #regular expression of log file. for getting right files.
+#        file_match =  '.*\.log'
+        file_match =  'test_damper.txt'
+
+
+        #get task infomation, if it's in the path string.
+        #string is splited by sep symbol(system wise) from 0 on
+        task_position = -1
+
+        #specified the plugin name
+        processor = "damper"
+
+        #specifed the mesurement name in fluxdb database.
+        measurement = "MTS_Damper"
+
+        #specifed the tags attached to the data under this directory.
+        [Logstreamer.Damper.user_tag]
+
+
+[processor]
+    [processor.damper]
+            # the path points to process plugin.
+            processor_path = "watcher_output.damper"
+
+            # the real Outputer name
+            class = "Outputer"
+            [processor.damper.status]
+                error = []
+                running = ['Controlling Application -- Damper Test System']
+                stop   = ['HPU T7-J25 -- No Pressure.',"'Damper Test System' has disconnected from the station."]
+                unknown =[]
+
+            [processor.damper.level]
+                Warning = 4
+                Information = 6
+                debug = 7
+                notice = 5
+                Error = 3
+                crit = 2
+                alert = 1
+                emerg = 0
+                # N/A = 8
+
+            [processor.damper.config]
+                nodename = '123'
+                eqpt_no = 'some_eqpt'
+
+
+#log configuration
+[log]
+    # boolean type, if true ,the debug information will print sys.stdout.
+    # if false, the debug information will print to fill we specified.
+    debug = true
+
+    # the derectory in which our log file reside.
+    logfile = "logs/watchman_debug.log"
+
+    # backup log_fie maximum number is 5.
+    backup_count = 5
+
+    # A log files maximum size.if size exceed this, bakcup it.
+    max_size = 300
+
+    # determine the debug level you want to print.
+    # notset < debug < info < warning < error < critical
+    level = 'debug'
+
+    # format your debug information.
+    # for more infomation, please checkout this site:
+    #       http://logbook.readthedocs.io/en/stable/
+    format_string = '({record.time:%m-%d %H:%M:%S}){record.level_name},channel:{record.channel},line_{record.lineno}: {record.message}'
+
+
+
+[data_output]
+
+# specified the output tools, redis or influxdb.
+    which = 'influxdb'
+
+    [data_output.influxdb]
+        host = "localhost"
+        port = 8085
+        username ="root"
+        password = "root"
+        db = "marshall"
+
+    [data_output.redis]
+        host = 'localhost'
+        port = 6379
+        db   = 10
+        lua  = 'D:\project\watchman_marshall\lua_script\imtech.lua'
