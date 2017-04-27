@@ -17,8 +17,7 @@
         journal_directory  = "logstreamer"
 
         # A directory in which log files reside
-        #log_directory = ['D:\work\work_stuff\log\yincang3log\station\Config']
-        log_directory = ['D:\project\watchman_marshall\watcher_output']
+        log_directory = ['D:\work\work_stuff\eps_log_stuff']
 
         #regular expression of log file. for getting right files.
         file_match =  '.+\.log'
@@ -31,7 +30,9 @@
         processor = "EPS_Station"
 
         #specifed the mesurement name in fluxdb database.
-        measurement = "ying_cang3station"
+        measurement = "EPS_Station"
+
+        [Logstreamer.Station.user_tag]
 
 [processor]
     [processor.EPS_Station]
@@ -63,10 +64,10 @@
 
             #some user specified tags
             [processor.EPS_Station.config]
-
                 nodename = ""
 
                 eqpt_no = "yincang_Station"
+
 
 #log configuration
 [log]
@@ -84,16 +85,29 @@
     max_size = 300
 
     # determine the debug level you want to print.
-    level = 0
+    # notset < debug < info < warning < error < critical
+    level = 'debug'
 
     # format your debug information.
     # for more infomation, please checkout this site:
     #       http://logbook.readthedocs.io/en/stable/
-    format_string = '({record.time:%Y-%m-%d %H:%M:%S.%f%z}) {record.level_name},[cls,method name:{record.channel}][line:{record.lineno}]: {record.message}'
+    format_string = '({record.time:%m-%d %H:%M:%S}){record.level_name},channel:{record.channel},line_{record.lineno}: {record.message}'
 
-[influxdb]
-    host = "127.0.0.1"
-    port = 8086
-    username ="root"
-    password = "root"
-    db = "marshall"
+
+[data_output]
+
+# specified the output tools, redis or influxdb.
+    which = 'influxdb'
+
+    [data_output.influxdb]
+        host = "localhost"
+        port = 8085
+        username ="root"
+        password = "root"
+        db = "marshall"
+
+    [data_output.redis]
+        host = 'localhost'
+        port = 6379
+        db   = 10
+        lua  = 'D:\project\watchman_marshall\lua_script\imtech.lua'
