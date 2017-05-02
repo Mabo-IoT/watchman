@@ -40,7 +40,6 @@ class Watcher(object):
         self.oldest_duration = watcher_conf.get('oldest_duration', "31d")
         self.measurement = watcher_conf["measurement"]
         self.user_tag = watcher_conf['user_tag']
-        self.user_tag = watcher_conf['user_tag']
 
         # key is the one of the python plugin. s.t : MTSHisOutput   MTSLogOutput
         self.processer = get_processor(watcher_conf['processor'], app_conf)

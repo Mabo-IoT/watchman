@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
+import time
 from sys import version_info
 
 import pendulum
-from influxdb import InfluxDBClient
 from logbook import Logger
 
 if version_info[0] == 3:
@@ -23,20 +23,20 @@ def one(pre_time_str, log_str):
         time_str = pre_time_str + post_time_str.split(maxsplit=1)[-1]
     else:
         time_str = pre_time_str + post_time_str.split(None, 1)[-1]
-    timestamp = pendulum.from_format(time_str, '[%Y/%m/%d]%I:%M:%S %p>').timestamp
+    timestamp = pendulum.from_format(time_str, '[%Y/%m/%d]%I:%M:%S %p>').int_timestamp
     return fields, timestamp
 
 
 def two(pre_time_str, log_str):
     _ = pre_time_str
     fields = {temp[0]: float(temp[1:].strip()) for temp in log_str.split(',')}
-    timestamp = pendulum.now('Asia/Shanghai').timestamp
+    timestamp = pendulum.now('Asia/Shanghai').int_timestamp
     return fields, timestamp
 
 
 def three(pre_time_str, log_str):
     _ = pre_time_str
-    timestamp = pendulum.now('Asia/Shanghai').timestamp
+    timestamp = pendulum.now('Asia/Shanghai').int_timestamp
     fields = {'message': log_str}
     return fields, timestamp
 
@@ -46,7 +46,7 @@ def four(pre_time_str, log_str):
     position_list = log_str[6:].strip().split(',')
     fields = {temp[0]: float(temp[1:].strip()) for temp in position_list}
     fields['circle'] = 1
-    timestamp = pendulum.now('Asia/Shanghai').timestamp
+    timestamp = pendulum.now('Asia/Shanghai').int_timestamp
     return fields, timestamp
 
 
@@ -54,28 +54,11 @@ def five(pre_time_str, log_str):
     _ = pre_time_str
     fields = {each[0]: float(each[1:]) for each in log_str.split()[1:]}
     fields['N00000'] = 1
-    timestamp = pendulum.now('Asia/Shanghai').timestamp
+    timestamp = pendulum.now('Asia/Shanghai').int_timestamp
     return fields, timestamp
 
 
-class InfluxDBBase(object):
-    """ influxdb lib """
-
-    def __init__(self, config):
-        """ init """
-        log.debug("init InfluxDBBase...")
-        self.config = config["influxdb"]
-        self.client = InfluxDBClient(self.config['host'],
-                                     self.config['port'], self.config['username'],
-                                     self.config['password'], self.config['db'])
-
-    def send(self, json_body):
-        """ write point """
-
-        self.client.write_points(json_body, time_precision='u')
-
-
-class Outputer(InfluxDBBase):
+class Outputer(object):
     feature = {'(\w\d{3}|\w+\d_\d{3})\s+.*>$': one,
                'X.+,Y.+,Z.+': two,
                '\w+.+\.$': three,
@@ -84,18 +67,18 @@ class Outputer(InfluxDBBase):
 
     def __init__(self, conf, processor):
         config_conf = conf['processor'][processor]['config']
+        self.processor = processor
         self.conf = conf
         self.nodename = config_conf["nodename"]
         self.eqpt_no = config_conf["eqpt_no"]
-        self.status_map = config_conf['status']
+        self.status_map = conf['processor'][processor]['status']
         self.seq = 1
 
-        super(Outputer, self).__init__(conf)
-
-    def message_process(self, msgline, task, measurement, inject_tags):
+    def message_process(self, msgline, task, measurement, ):
         pre_time_str, log_str = msgline[:12], msgline[12:]
 
         for each_pattern in Outputer.feature:
+
             if version_info[0] == 3:
                 res = fullmatch(each_pattern, log_str)
             else:
@@ -103,16 +86,24 @@ class Outputer(InfluxDBBase):
 
             if res:
                 fields, timestamp = Outputer.feature[each_pattern](pre_time_str, log_str)
-                payload = {'fields': fields,
-                           'time': 1000000 * timestamp + self.seq % 1000,
-                           'measurement': measurement,
-                           'tags': {
-                               'eqpt_no': self.eqpt_no,
-                               'nodename': self.nodename}
-                           }
-                self.send([payload])
-        log.debug('sent!')
-        return 0, None
+                influx_json = {'fields': fields,
+                               'time': 1000000 * timestamp + self.seq % 1000,
+                               'measurement': measurement,
+                               'tags': {
+                                   'eqpt_no': self.eqpt_no,
+                                   'nodename': self.nodename}
+                               }
+                self.seq += 1
+
+                return 0, 'process successful', influx_json
+
+        # wrong format
+        influx_json = {
+            "fields": {'msg': msgline},
+            "time": 1000000 * int(time.time()),
+            "measurement": 'new_issueline',
+            'tags': {'processor': self.processor, 'eqpt_no': self.eqpt_no}}
+        return 1, 'wrong format.', influx_json
 
     def get_status(self, code):
         for each in self.status_map:
