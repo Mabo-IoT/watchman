@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 >>> with open("test_conf.toml") as conf_file:
 ...     conf_file = toml.loads(conf_file.read())
