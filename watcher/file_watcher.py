@@ -8,11 +8,13 @@ This moudule contains a class Watcher. This class will do following things:
     3.pass the line to process pluing.
 
 """
+import codecs
 import json
 import os
 import re
 import time
 import traceback
+from sys import version_info
 
 import logbook
 import msgpack
@@ -197,9 +199,14 @@ class Watcher(object):
             log.debug('file_size = present_point')
             return 'pass'
 
-        with open(filename, 'r', errors='ignore') as for_read:
-            for_read.seek(present_point)
-            contents = for_read.read(file_size - present_point)
+        if version_info[0] == 2:
+            with codecs.open(filename, 'r', errors='ignore') as for_read:
+                for_read.seek(present_point)
+                contents = for_read.read(file_size - present_point)
+        else:
+            with open(filename, 'r', errors='ignore') as for_read:
+                for_read.seek(present_point)
+                contents = for_read.read(file_size - present_point)
 
         present_point = file_size
         self.set_seek(fn, present_point)
