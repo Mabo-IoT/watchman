@@ -12,6 +12,7 @@ __version__ = "0.0.0"
 
 import os
 import threading
+import time
 
 from logbook import Logger
 
@@ -66,7 +67,7 @@ def main():
     setup_logger(log_conf)
     start_app(conf)
     while True:
-        pass
+        time.sleep(10)
 
 
 if __name__ == "__main__":

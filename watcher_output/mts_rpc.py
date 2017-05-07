@@ -4,30 +4,26 @@
 # 3.send it to influxDB,then next line
 
 
-import datetime
-import re
 import time
 
+import pendulum
 from logbook import Logger
 
 log = Logger('mts_rpc')
 
 
 def get_timestamp(time_str):
-    pattern = r'(\d+)/(\d+)/(\d+) (\d+):(\d+):(\d+)'
-    compile_obj = re.compile(pattern)
-    match_obj = compile_obj.search(time_str)
-    if match_obj is None:
-        return 0
-    all_groups = match_obj.groups()
-    month, day, year, hour, minute, second = all_groups
+    format_24 = ''
+    format_12 = ''
+    # 12h time format
+    if time_str[-1] == 'M':
+        timestamp = pendulum.from_format(time_str, '%m/%d/%Y %I:%M:%S %p',
+                                         'Asia/Shanghai').int_timestamp
+    else:
+        timestamp = pendulum.from_format(time_str, '%Y/%m/%d %H:%M:%S',
+                                         'Asia/Shanghai').int_timestamp
 
-    dp = {"year": int(year), "month": int(month), "day": int(day),
-          "hour": int(hour), "minute": int(minute), "second": int(second)}
-
-    dt = datetime.datetime(**dp)
-
-    return time.mktime(dt.timetuple())
+    return timestamp
 
 
 def get_float(f):
