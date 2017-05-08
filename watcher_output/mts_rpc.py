@@ -4,6 +4,7 @@
 # 3.send it to influxDB,then next line
 
 
+import os
 import time
 
 import pendulum
@@ -40,7 +41,7 @@ class Outputer(object):
         self.nodename = config_conf["nodename"]
         self.eqpt_no = config_conf["eqpt_no"]
         self.seq = 1
-
+        self.task_infomation = conf['Logstreamer']['RPC']['task']
         self.tags_dict = [
             'DateTime',  # 0
             'StartSequence',  # 1
@@ -54,13 +55,17 @@ class Outputer(object):
             'Unit'  # 9
         ]
 
-    def message_process(self, msgline, task, measurement):
+    def message_process(self, msgline, filename, measurement):
 
         data = msgline.split('\t')
         timestamp = get_timestamp(data[0])
 
         data_len = len(data)
+
         switch = {3: self.len3, 7: self.len7, 10: self.len10}
+
+        task = self.get_task(filename)
+
         if data_len in [3, 7, 10]:
             tags, fields = switch[data_len](data, task)
 
@@ -84,6 +89,18 @@ class Outputer(object):
             influx_json = {"tags": tags, "fields": fields, "time": int(time.time()), "measurement": "new_issueline_rpc"}
             log.debug("issue_line rpc:")
             return 1, 'wrong format.', influx_json
+
+    def get_task(self, file_absolute_path, ):
+        some = self.task_infomation
+        task_map = dict([tuple(one.split(':')) for one in some])
+        path_split = file_absolute_path.split(os.sep)
+
+        for one in task_map:
+            if one in path_split:
+                task = task_map[one]
+                return task
+        task = 'full'
+        return task
 
     def len3(self, data, task):
         tags = {

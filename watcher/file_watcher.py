@@ -36,7 +36,7 @@ class Watcher(object):
         self.ticker_interval = watcher_conf["ticker_interval"]
         self.log_directory = watcher_conf["log_directory"]
         self.file_match_pattern = watcher_conf["file_match"]
-        self.task_position = watcher_conf["task_position"]
+
         self.ext = ".jrn"
         self.matched_files = []
         self.oldest_duration = watcher_conf.get('oldest_duration', "31d")
@@ -144,8 +144,6 @@ class Watcher(object):
                 log.info('{} read all'.format(name))
                 continue
 
-            task = Watcher.get_task_name(self.task_position, filename)
-
             for line in contents.split('\n'):
                 message = line.strip()
 
@@ -153,7 +151,7 @@ class Watcher(object):
                     continue
                 else:
 
-                    process_rtn, info, influx_json = self.processer.message_process(message, task,
+                    process_rtn, info, influx_json = self.processer.message_process(message, filename,
                                                                                     self.measurement, )
                     if process_rtn == 1:
                         log.error(info)
