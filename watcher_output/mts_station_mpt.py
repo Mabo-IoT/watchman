@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import os
 import re
 import time
 
@@ -38,12 +39,12 @@ class Outputer(object):
         # for recording
         self.last_timestamp = 0
 
-    def message_process(self, msgline, task, measurement):
+    def message_process(self, msgline, task_related, measurement):
         """接受一条日志，解析完成后，取得相应信息，组成influxdb
         所需字典，返回。
 
         :param msgline: 日志
-        :param task: 本次实验任务名
+        :param task_related: 相关信息
         :param measurement: 此实验的表名
         :return: 以influxdb line protocal 组成的字典
         """
@@ -65,7 +66,8 @@ class Outputer(object):
             return 1, 'wrong format.', influx_json
 
         data = self.build_fields(some_data)
-
+        filename, self.task_infomation = task_related
+        task = self.get_task(filename)
         # construct influx json.
         if "status" in data:
             fields = {
@@ -167,4 +169,23 @@ class Outputer(object):
         else:
             return False
 
+    def get_task(self, file_absolute_path, ):
+
+        some = self.task_infomation
+        if isinstance(some, int):
+            name = file_absolute_path.split(os.sep)[some]
+            # if .xxx ,drop it
+            if '.log' or '.txt' in name:
+                name = name[:-4]
+            task = name
+        else:
+            task_map = dict([tuple(one.split(':')) for one in some])
+            path_split = file_absolute_path.split(os.sep)
+
+            for one in task_map:
+                if one in path_split:
+                    task = task_map[one]
+                    return task
+            task = 'full'
+        return task
 # fixme :RPC也要分前悬后悬的分离。未做

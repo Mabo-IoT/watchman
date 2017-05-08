@@ -41,7 +41,6 @@ class Outputer(object):
         self.nodename = config_conf["nodename"]
         self.eqpt_no = config_conf["eqpt_no"]
         self.seq = 1
-        self.task_infomation = conf['Logstreamer']['RPC']['task']
         self.tags_dict = [
             'DateTime',  # 0
             'StartSequence',  # 1
@@ -55,7 +54,7 @@ class Outputer(object):
             'Unit'  # 9
         ]
 
-    def message_process(self, msgline, filename, measurement):
+    def message_process(self, msgline, task_related, measurement):
 
         data = msgline.split('\t')
         timestamp = get_timestamp(data[0])
@@ -64,6 +63,7 @@ class Outputer(object):
 
         switch = {3: self.len3, 7: self.len7, 10: self.len10}
 
+        filename, self.task_infomation = task_related
         task = self.get_task(filename)
 
         if data_len in [3, 7, 10]:

@@ -62,6 +62,9 @@ class Watcher(object):
             self.influx_conf = app_conf['data_output']['influxdb']
             self.influx = InfluxDBBase(app_conf['data_output']['influxdb'])
 
+        # task infomation
+        self.task_infomation = watcher_conf['task']
+
         check_path("logstreamer")
 
     def re_connect_influxdb(self):
@@ -150,8 +153,8 @@ class Watcher(object):
                 if message == "":
                     continue
                 else:
-
-                    process_rtn, info, influx_json = self.processer.message_process(message, filename,
+                    task_ralated = (filename, self.task_infomation)
+                    process_rtn, info, influx_json = self.processer.message_process(message, task_ralated,
                                                                                     self.measurement, )
                     if process_rtn == 1:
                         log.error(info)
