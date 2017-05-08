@@ -91,15 +91,23 @@ class Outputer(object):
             return 1, 'wrong format.', influx_json
 
     def get_task(self, file_absolute_path, ):
-        some = self.task_infomation
-        task_map = dict([tuple(one.split(':')) for one in some])
-        path_split = file_absolute_path.split(os.sep)
 
-        for one in task_map:
-            if one in path_split:
-                task = task_map[one]
-                return task
-        task = 'full'
+        some = self.task_infomation
+        if isinstance(some, int):
+            name = file_absolute_path.split(os.sep)[some]
+            # if .xxx ,drop it
+            if '.log' or '.txt' in name:
+                name = name[:-4]
+            task = name
+        else:
+            task_map = dict([tuple(one.split(':')) for one in some])
+            path_split = file_absolute_path.split(os.sep)
+
+            for one in task_map:
+                if one in path_split:
+                    task = task_map[one]
+                    return task
+            task = 'full'
         return task
 
     def len3(self, data, task):
