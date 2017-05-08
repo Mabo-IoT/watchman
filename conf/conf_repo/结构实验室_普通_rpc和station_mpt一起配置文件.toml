@@ -57,19 +57,23 @@
 
         # A directory in which log files reside.
 #        log_directory = ['D:\work\work_repo\watchman\testlog\K216 Front Suspension - 20160319']
-        log_directory = []
+        log_directory = ['D:\work\work_stuff\rpc']
         #regular expression of log file. for getting right files.
-        file_match =  'History_Report.txt'
-
-        #get task infomation, if it's in the path string.
-        #string is splited by sep symbol(system wise) from 0 on
-        task_position = -2
+        file_match =  '12h.txt'
 
         #specified the plugin name
         processor = "MTS_RPC"
 
         #specifed the mesurement name in fluxdb database.
         measurement = "MTS_RPC"
+
+        # two choice
+        # task = [position-number] or
+        # task = ['keywrod:taskname']
+        # task information.{keyword:taskname}
+
+        task = ['rpc:woshirpc',]
+#        task = -1
 
         [Logstreamer.RPC.user_tag]
             source = 'full'
