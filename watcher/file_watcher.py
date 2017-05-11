@@ -264,12 +264,15 @@ class Watcher(object):
         if method == 'redis':
             timestamp, fields, measurement, tags, eqpt_no = json_data['time'], json_data['fields'], json_data[
                 'measurement'], json_data['tags'], json_data['tags']['eqpt_no']
+            timestamp = pack_to_byte(timestamp)
             fields = pack_to_byte(fields)
             measurement = pack_to_byte(measurement)
             tags = pack_to_byte(tags)
             eqpt_no = pack_to_byte(tags)
-            unit = 's'
+
+            unit = 'u'
             unit = pack_to_byte(unit)
+
             lua_info = self.redis.enqueue(timestamp=timestamp, tags=tags,
                                           fields=fields, measurement=measurement, unit=unit)
             log.info('send data to redis,{}'.format(lua_info))
