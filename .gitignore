@@ -21,7 +21,7 @@ sdist/
 # watchman stuff
 *.ico
 logs/
-logstreamer/
+read_recorder/
 *.exe
 *.spec
 conf/watchman.toml

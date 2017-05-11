@@ -1,9 +1,9 @@
-from logbook import Logger
+import re
 import socket
-import os
+
 import pendulum
 from influxdb import InfluxDBClient
-import re
+from logbook import Logger
 
 log = Logger('Fidia_post')
 

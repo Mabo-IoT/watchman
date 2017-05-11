@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import pendulum
-from logbook import Logger
 from influxdb import InfluxDBClient
+from logbook import Logger
 
 log = Logger('tts_crtlmessage')
 

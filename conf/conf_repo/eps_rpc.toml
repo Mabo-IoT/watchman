@@ -38,8 +38,8 @@
 [processor]
     [processor.EPS_RPC]
             # the path points to process plugin.
-            # normally under the watcher_output directory
-            processor_path = "watcher_output.eps_rpc"
+            # normally under the processor directory
+            processor_path = "processor.eps_rpc"
 
             # the real Outputer name
             class = "Outputer"

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from sys import version_info
 import pendulum
 from influxdb import InfluxDBClient
 from logbook import Logger

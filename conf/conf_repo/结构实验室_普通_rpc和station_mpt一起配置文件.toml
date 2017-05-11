@@ -78,7 +78,7 @@
 [processor]
     [processor.MTS_Station_and_MPT]
             # the path points to process plugin.
-            processor_path = "watcher_output.mts_station_mpt"
+            processor_path = "processor.mts_station_mpt"
 
             # the real Outputer name
             class = "Outputer"
