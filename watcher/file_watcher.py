@@ -285,7 +285,7 @@ class Watcher(object):
                 info = self.influx.send([json_data], time_precision=self.time_precision)
                 log.info('send data to inflxudb.{}, {}'.format(json_data['measurement'], info))
 
-            except ConnectionError as e:
+            except Exception as e:
                 log.error(e)
                 log.error('remote server error')
             return 0
