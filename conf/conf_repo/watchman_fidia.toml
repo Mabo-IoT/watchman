@@ -31,6 +31,7 @@
 
         #specifed the mesurement name in fluxdb database.
         measurement = "Fidia"
+        [Logstreamer.Fidia.user_tag]
 
 [processor]
     [processor.FidiaOutput]
@@ -48,6 +49,18 @@
                 Warning =     4
                 Information = 5
                 Debug =       6
+            [processor.FidiaOutput.status]
+
+                error = []
+
+                running = ['PRESSED THE START KEY',
+                           'MTE: TABLE SAFETY DOORS CLOSED',
+                           'IDHLD FEED RELEASE']
+
+                stop   = ['ACCEPTED COMMAND: ABORT ACCEPTED',
+                          "IDHLD FEED HOLD",
+                          'MTE: TABLE SAFETY DOORS UNLATCHED']
+
 
             #some user specified tags
             [processor.FidiaOutput.config]
@@ -69,19 +82,32 @@
     backup_count = 5
 
     # A log files maximum size.if size exceed this, bakcup it.
-    max_size = 300
+    max_size = 10240
 
     # determine the debug level you want to print.
-    level = 0
+    # notset < debug < info < warning < error < critical
+    level = 'debug'
 
     # format your debug information.
     # for more infomation, please checkout this site:
     #       http://logbook.readthedocs.io/en/stable/
-    format_string = '({record.time:%Y-%m-%d %H:%M:%S.%f%z}) {record.level_name},[channel:{record.channel}][file_name:{record.filename}][line:{record.lineno}]: {record.message}'
+    format_string = '({record.time:%m-%d %H:%M:%S}){record.level_name},channel:{record.channel},line_{record.lineno}: {record.message}'
 
-[influxdb]
-    host = "127.0.0.1"
-    port = 8086
-    username ="root"
-    password = "root"
-    db = "marshall"
+[data_output]
+
+# specified the output tools, redis or influxdb.
+    which = 'influxdb'
+
+    [data_output.influxdb]
+        host = "localhost"
+        port = 8085
+        username ="root"
+        password = "root"
+        db = "marshall"
+        time_precison = 'u'
+
+    [data_output.redis]
+        host = 'localhost'
+        port = 6379
+        db   = 10
+        lua  = 'lua_script\enque.lua'
