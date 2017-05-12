@@ -172,6 +172,9 @@ class Watcher(object):
                         influx_json['tags'].update(self.user_tag)
                         self.send(influx_json, method=self.output)
 
+                    if process_rtn == 2:
+                        pass
+
     def watch(self):
         """读log日志，分行交给processor处理
 
