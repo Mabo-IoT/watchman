@@ -41,12 +41,17 @@ class Outputer(object):
             _, time, code, message = data
 
             status = self.calculate_status(message, )
+            try:
+                task = Outputer.get_task(message)
+            except:
+                task = None
+                log.debug('this message no task')
             level = Outputer.calculate_level(code)
             if level == 3:
                 status = 2
             data = status, level, message, code
 
-            influx_json = self.construct_json(time, data, measurement, task="zan shi wei ding")
+            influx_json = self.construct_json(time, data, measurement, task=task)
 
             process_rtn = 0
             info = 'good'
@@ -89,3 +94,11 @@ class Outputer(object):
                       'I': 'Information', 'D': 'Debug'}
         level = level_dict.get(code[0])
         return level
+
+    @staticmethod
+    def get_task(message):
+
+        rawstr = r'.FROM IPC.+TO CNC.(.+).'
+        task = re.search(rawstr, message).groups()[0]
+
+        return task
