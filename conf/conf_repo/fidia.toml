@@ -17,9 +17,10 @@
         journal_directory  = "logstreamer"
 
         # A directory in which log files reside
-        log_directory = ["D:\\work\\work_repo\\watchman\\testlog"]
+        log_directory = ['D:\work\work_repo\watchman\testlog']
 
         #regular expression of log file. for getting right files.
+#        file_match =  'cnc-test.txt'
         file_match =  'LOGFILE.CNC'
 
         #get task infomation, if it's in the path string.
@@ -54,13 +55,14 @@
                 error = []
 
                 running = ['PRESSED THE START KEY',
-                           'MTE: TABLE SAFETY DOORS CLOSED',
-                           'IDHLD FEED RELEASE']
+                            'START EXECUTION',
+                           ]
 
                 stop   = ['ACCEPTED COMMAND: ABORT ACCEPTED',
                           "IDHLD FEED HOLD",
-                          'MTE: TABLE SAFETY DOORS UNLATCHED']
-
+                          ]
+#                          'MTE: TABLE SAFETY DOORS UNLATCHED',
+#                            'FILE EXECUTION'
 
             #some user specified tags
             [processor.FidiaOutput.config]
@@ -99,8 +101,8 @@
     which = 'influxdb'
 
     [data_output.influxdb]
-        host = "localhost"
-        port = 8085
+        host = '192.168.237.128'
+        port = 8086
         username ="root"
         password = "root"
         db = "marshall"
