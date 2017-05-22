@@ -42,7 +42,7 @@
 [processor]
     [processor.damper]
             # the path points to process plugin.
-            processor_path = "watcher_output.damper"
+            processor_path = "processor.damper"
 
             # the real Outputer name
             class = "Outputer"

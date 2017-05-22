@@ -19,7 +19,7 @@ from sys import version_info
 import logbook
 import msgpack
 
-from marshall_io.databse_io import RedisClient, InfluxDBBase
+from marshall_io.databse_io import RedisWrapper, InfluxdbWrapper
 
 log = logbook.Logger("file_watcher")
 
@@ -32,14 +32,14 @@ class Watcher(object):
         watcher_conf = app_conf['Logstreamer'][item]
         self.error_count = 0  #
         self.item = item
-        self.rescan_interval = int(watcher_conf["rescan_interval"][:-1])
-        self.ticker_interval = watcher_conf["ticker_interval"]
+        self.rescan_interval = int(watcher_conf.get("rescan_interval", '20s')[:-1])
+        self.ticker_interval = watcher_conf.get("ticker_interval", 1)
         self.log_directory = watcher_conf["log_directory"]
         self.file_match_pattern = watcher_conf["file_match"]
 
         self.ext = ".jrn"
         self.matched_files = []
-        self.oldest_duration = watcher_conf.get('oldest_duration', "31d")
+        self.oldest_duration = watcher_conf.get('oldest_duration', "1d")
         self.measurement = watcher_conf["measurement"]
         self.user_tag = watcher_conf['user_tag']
         self.user_tag = watcher_conf['user_tag']
@@ -47,30 +47,31 @@ class Watcher(object):
         # key is the one of the python plugin. s.t : MTSHisOutput   MTSLogOutput
         self.processer = get_processor(watcher_conf['processor'], app_conf)
 
-        self.logstreamer = "logstreamer"
+        self.logstreamer = "read_recorder"
 
         # output tools
         self.output = app_conf['data_output']['which']
 
         # redis initialize.
         if self.output == 'redis':
-            self.redis = RedisClient(app_conf['data_output']['redis'])
-            self.redis.load_script(app_conf['data_output']['redis']['lua'])
+            self.redis = RedisWrapper(app_conf['data_output']['redis'])
+            self.redis.script_load(app_conf['data_output']['redis']['lua'])
 
         # influxdb initialize
         if self.output == 'influxdb':
             self.influx_conf = app_conf['data_output']['influxdb']
-            self.influx = InfluxDBBase(app_conf['data_output']['influxdb'])
+            self.influx = InfluxdbWrapper(app_conf['data_output']['influxdb'])
+            self.time_precision = self.influx_conf['time_precison']
 
         # task infomation
-        self.task_infomation = watcher_conf['task']
+        self.task_infomation = watcher_conf['task_position']
 
-        check_path("logstreamer")
+        check_path("read_recorder")
 
     def re_connect_influxdb(self):
         # influxdb initialize
         if self.output == 'influxdb':
-            self.influx = InfluxDBBase(self.influx_conf)
+            self.influx = InfluxdbWrapper(self.influx_conf)
 
     def set_seek(self, file_name, seek):
         """
@@ -79,11 +80,17 @@ class Watcher(object):
         :param seek: the point to file we last read stop at.
         :return:no sense for now
         """
-        journey_file = os.sep.join([self.logstreamer, self.item + "_" + file_name + self.ext])
+        base_name = os.path.basename(file_name)
+        journey_file = os.sep.join([self.logstreamer, self.item + "-(" + base_name + ')' + self.ext])
+
         if os.path.exists(journey_file) and seek == 0:
             return 1
-        full_path = os.path.abspath(file_name)
-        seekinfo = {"seek": seek, "file_name": full_path}
+
+        file_name = to_single_slash(file_name)
+        # construct seek info
+        seekinfo = {'seek': seek, 'file_name': file_name,
+                    'location': to_single_slash(os.path.dirname(file_name))}
+
         jsonstr = json.dumps(seekinfo)
         with open(journey_file, "w") as f:
             f.write(jsonstr)
@@ -95,9 +102,9 @@ class Watcher(object):
         :return: seek number or 0
         """
 
-        self.logstreamer = "logstreamer"
-
-        fn = os.sep.join([self.logstreamer, self.item + "_" + file_name + self.ext])
+        self.logstreamer = "read_recorder"
+        base_name = os.path.basename(file_name)
+        fn = os.sep.join([self.logstreamer, self.item + "-(" + base_name + ')' + self.ext])
 
         if os.path.exists(fn):
 
@@ -144,7 +151,6 @@ class Watcher(object):
             contents = self.read_contents(filename)
             if contents == 'pass':
                 name = os.path.basename(filename)
-                log.info('{} read all'.format(name))
                 continue
 
             for line in contents.split('\n'):
@@ -167,6 +173,9 @@ class Watcher(object):
                         influx_json['tags'].update(self.user_tag)
                         self.send(influx_json, method=self.output)
 
+                    if process_rtn == 2:
+                        pass
+
     def watch(self):
         """读log日志，分行交给processor处理
 
@@ -178,6 +187,7 @@ class Watcher(object):
                 log.error('error in reading log file... ')
                 log.error(traceback.format_exc())
                 log.error(ex)
+            log.info('所有匹配log日志已经传输完毕, All is Done!')
             log.info('wating{}s,re processing log'.format(self.ticker_interval))
             time.sleep(self.ticker_interval)
 
@@ -190,7 +200,7 @@ class Watcher(object):
         :param filename:a log file name
         :return:the contents we don't process.
         """
-        fn = os.path.basename(filename)
+        fn = filename
         file_size = os.stat(filename)[6]
 
         present_point = self.get_seek(fn)
@@ -258,23 +268,35 @@ class Watcher(object):
         if method == 'redis':
             timestamp, fields, measurement, tags, eqpt_no = json_data['time'], json_data['fields'], json_data[
                 'measurement'], json_data['tags'], json_data['tags']['eqpt_no']
+            timestamp = pack_to_byte(timestamp)
             fields = pack_to_byte(fields)
             measurement = pack_to_byte(measurement)
             tags = pack_to_byte(tags)
             eqpt_no = pack_to_byte(tags)
 
-            info = self.redis.enqueue(eqpt_no, timestamp, tags, fields, measurement)
-            log.info('send data to redis,{}'.format(info))
+            unit = 'u'
+            unit = pack_to_byte(unit)
+
+            lua_info = self.redis.enqueue(timestamp=timestamp, tags=tags,
+                                          fields=fields, measurement=measurement, unit=unit)
+            log.info('send data to redis,{}'.format(lua_info))
             return 0
         if method == 'influxdb':
             try:
-                info = self.influx.send([json_data])
+                info = self.influx.send([json_data], time_precision=self.time_precision)
                 log.info('send data to inflxudb.{}, {}'.format(json_data['measurement'], info))
 
-            except ConnectionError as e:
+            except Exception as e:
                 log.error(e)
                 log.error('remote server error')
             return 0
+
+
+def to_single_slash(filename):
+    path = filename.split('\\')
+    connect = '/'
+    filename = connect.join(path)
+    return filename
 
 
 def pack_to_byte(raw):

@@ -35,7 +35,7 @@
 [processor]
     [processor.KC]
             # the path points to process plugin.
-            processor_path = "watcher_output.kc"
+            processor_path = "processor.kc"
 
             # the real Outputer name
             class = "Outputer"

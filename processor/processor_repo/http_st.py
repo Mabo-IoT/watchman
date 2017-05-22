@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from logbook import Logger
 import re
 import socket
 import time
@@ -7,6 +6,7 @@ import time
 import requests
 import requests.exceptions
 from influxdb import InfluxDBClient
+from logbook import Logger
 
 """
 Stmgr Logstreamer

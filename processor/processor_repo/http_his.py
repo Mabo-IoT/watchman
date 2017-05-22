@@ -3,14 +3,15 @@
 # 2.process data with line
 # 3.send it to influxDB,then next line
 # import datetime
-from logbook import Logger
+import datetime
 import re
 import socket
 import time
+
 import requests
 import requests.exceptions
-import datetime
 from influxdb import InfluxDBClient
+from logbook import Logger
 
 log = Logger('his_post')
 
