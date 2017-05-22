@@ -37,6 +37,7 @@ def get_float(f):
 class Outputer(object):
     def __init__(self, conf, processor):
         config_conf = conf['processor'][processor]['config']
+        self.front_rear_full_special = conf['processor'][processor]['is_front_rear_full']
 
         self.nodename = config_conf["nodename"]
         self.eqpt_no = config_conf["eqpt_no"]
@@ -63,19 +64,32 @@ class Outputer(object):
 
         switch = {3: self.len3, 7: self.len7, 10: self.len10}
 
-        filename, self.task_infomation = task_related
+        filename, self.task_position = task_related
         task = self.get_task(filename)
+
+        if self.front_rear_full_special:
+            # front , rear, full speical
+            source = self.decide_source(filename)
+        else:
+            # no source in file path.
+            source = None
 
         if data_len in [3, 7, 10]:
             tags, fields = switch[data_len](data, task)
+            if source:
+                tags['source'] = source
 
             fields = del_null_fields(fields)
-            self.seq += 1
 
             influx_json = {"tags": tags,
                            "fields": fields,
                            "time": 1000000 * int(timestamp) + self.seq % 1000,
                            "measurement": measurement}
+
+            # seq value.
+            if self.seq > 10000:
+                self.seq = 0
+            self.seq += 1
 
             return 0, 'process successful', influx_json
 
@@ -90,24 +104,37 @@ class Outputer(object):
             log.debug("issue_line rpc:")
             return 1, 'wrong format.', influx_json
 
+    def decide_source(self, file_absolute_path):
+        task = ['front', 'rear', 'full']
+        path_split = file_absolute_path.split(os.sep)
+
+        # 找到相应source关键字
+        for one in task:
+            if one in path_split:
+                return one
+
+        # 没有找到关键字
+        source = 'full'
+        return source
+
     def get_task(self, file_absolute_path, ):
 
-        some = self.task_infomation
-        if isinstance(some, int):
-            name = file_absolute_path.split(os.sep)[some]
-            # if .xxx ,drop it
-            if '.log' or '.txt' in name:
-                name = name[:-4]
-            task = name
-        else:
-            task_map = dict([tuple(one.split(':')) for one in some])
-            path_split = file_absolute_path.split(os.sep)
+        some = self.task_position
 
-            for one in task_map:
-                if one in path_split:
-                    task = task_map[one]
-                    return task
-            task = 'full'
+        name = file_absolute_path.split(os.sep)[some]
+        # if .xxx ,drop it
+        if some == -1:
+            name = name[:-4]
+        task = name
+        # else:
+        #     task_map = dict([tuple(one.split(':')) for one in some])
+        #     path_split = file_absolute_path.split(os.sep)
+        #
+        #     for one in task_map:
+        #         if one in path_split:
+        #             task = task_map[one]
+        #             return task
+        #     task = 'full'
         return task
 
     def len3(self, data, task):
@@ -117,7 +144,7 @@ class Outputer(object):
         }
 
         fields = {
-            "seq": self.seq,
+
             "task": task,
             "EventType": data[2],
         }
@@ -134,7 +161,7 @@ class Outputer(object):
             "Channel": data[4],
             "task": task,
             "EventType": data[2],
-            "seq": self.seq,
+
             'LimitValue': get_float(data[5]),
             'CurrentValue': get_float(data[6]),
         }
@@ -149,7 +176,7 @@ class Outputer(object):
         fields = {
             "EventType": data[2],
             "Channel": data[4],
-            "seq": self.seq,
+
             'LimitValue': get_float(data[5]),
             'CurrentValue': get_float(data[6]),
             'Previous': get_float(data[7]),

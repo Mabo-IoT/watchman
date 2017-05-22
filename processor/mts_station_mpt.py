@@ -76,7 +76,7 @@ class Outputer(object):
                 "logger": data["logger"],
 
                 "task": task,
-                "seq": self.seq,
+
                 "FLevel": data["level"]}
         else:
             fields = {
@@ -84,7 +84,7 @@ class Outputer(object):
                 "logger": data["logger"],
 
                 "task": task,
-                "seq": self.seq,
+
                 "FLevel": data["level"]
 
             }
@@ -97,7 +97,10 @@ class Outputer(object):
                        "fields": fields,
                        "time": 1000000 * int(data["time"]) + self.seq % 1000,
                        "measurement": measurement}
-
+        # seq value.
+        if self.seq > 10000:
+            self.seq = 0
+        self.seq += 1
         return 0, 'process successful', influx_json
 
     @staticmethod
