@@ -80,7 +80,7 @@ class Watcher(object):
         :return:no sense for now
         """
         base_name = os.path.basename(file_name)
-        journey_file = os.sep.join([self.logstreamer, self.item + "-(" + base_name + ')' + self.ext])
+        journey_file = os.sep.join([self.logstreamer, self.item + "-(" + file_name + ')' + self.ext])
 
         if os.path.exists(journey_file) and seek == 0:
             return 1
