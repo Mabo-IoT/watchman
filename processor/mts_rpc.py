@@ -61,7 +61,7 @@ class Outputer(object):
         try:
             timestamp = get_timestamp(data[0])
         except Exception as e:
-            log.error('not regular data')
+            log.error('not regular time format')
             return 2, None, None
         data_len = len(data)
 
