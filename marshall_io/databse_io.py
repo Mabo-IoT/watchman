@@ -183,16 +183,18 @@ class InfluxdbWrapper:
         """
         while True:
             try:
+                log.info('try another connect')
                 if isinstance(self.conf, dict):
                     db = self.conf['db']
                 else:
                     db = self.conf[4]
                 self.query("show retention policies on %s" % db)
+
                 return True
             except (Connectionerror, InfluxDBClientError, Exception) as e:
-                log.error('\n' + str(e) + '\n')
-                time.sleep(2)
-                continue
+                log.error('write time out')
+                time.sleep(5)
+
 
     def send(self, json_body, time_precision='u', database=None, retention_policy=None):
         """
