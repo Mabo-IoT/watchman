@@ -58,8 +58,11 @@ class Outputer(object):
     def message_process(self, msgline, task_related, measurement):
 
         data = msgline.split('\t')
-        timestamp = get_timestamp(data[0])
-
+        try:
+            timestamp = get_timestamp(data[0])
+        except Exception as e:
+            log.error('not regular data')
+            return 2, None, None
         data_len = len(data)
 
         switch = {3: self.len3, 7: self.len7, 10: self.len10}
