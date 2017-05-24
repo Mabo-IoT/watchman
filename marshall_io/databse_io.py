@@ -183,7 +183,7 @@ class InfluxdbWrapper:
         """
         while True:
             try:
-                log.info('try another connect')
+
                 if isinstance(self.conf, dict):
                     db = self.conf['db']
                 else:
@@ -192,9 +192,9 @@ class InfluxdbWrapper:
 
                 return True
             except (Connectionerror, InfluxDBClientError, Exception) as e:
+                log.info('try another connect')
                 log.error('write time out')
                 time.sleep(5)
-
 
     def send(self, json_body, time_precision='u', database=None, retention_policy=None):
         """

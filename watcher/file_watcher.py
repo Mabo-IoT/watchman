@@ -79,8 +79,9 @@ class Watcher(object):
         :param seek: the point to file we last read stop at.
         :return:no sense for now
         """
-        base_name = os.path.basename(file_name)
-        journey_file = os.sep.join([self.logstreamer, self.item + "-(" + file_name + ')' + self.ext])
+
+        some = file_name.replace('\\', '-').replace(':', '-')
+        journey_file = os.sep.join([self.logstreamer, self.item + "-(" + some + ')' + self.ext])
 
         if os.path.exists(journey_file) and seek == 0:
             return 1
@@ -103,7 +104,8 @@ class Watcher(object):
 
         self.logstreamer = "read_recorder"
         base_name = os.path.basename(file_name)
-        fn = os.sep.join([self.logstreamer, self.item + "-(" + base_name + ')' + self.ext])
+        some = file_name.replace('\\', '-').replace(':', '-')
+        fn = os.sep.join([self.logstreamer, self.item + "-(" + some + ')' + self.ext])
 
         if os.path.exists(fn):
 

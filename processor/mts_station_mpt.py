@@ -178,7 +178,7 @@ class Outputer(object):
         if isinstance(some, int):
             name = file_absolute_path.split(os.sep)[some]
             # if .xxx ,drop it
-            if '.log' or '.txt' in name:
+            if some == -1:
                 name = name[:-4]
             task = name
         else:
@@ -191,4 +191,3 @@ class Outputer(object):
                     return task
             task = 'full'
         return task
-# fixme :RPC也要分前悬后悬的分离。未做

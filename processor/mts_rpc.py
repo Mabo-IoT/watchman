@@ -111,10 +111,14 @@ class Outputer(object):
         task = ['front', 'rear', 'full']
         path_split = file_absolute_path.split(os.sep)
 
+        lower = []
+        for each in path_split:
+            lower.append(each.casefold())
         # 找到相应source关键字
         for one in task:
-            if one in path_split:
-                return one
+            for each in lower:
+                if one in each:
+                    return one
 
         # 没有找到关键字
         source = 'full'
@@ -129,15 +133,6 @@ class Outputer(object):
         if some == -1:
             name = name[:-4]
         task = name
-        # else:
-        #     task_map = dict([tuple(one.split(':')) for one in some])
-        #     path_split = file_absolute_path.split(os.sep)
-        #
-        #     for one in task_map:
-        #         if one in path_split:
-        #             task = task_map[one]
-        #             return task
-        #     task = 'full'
         return task
 
     def len3(self, data, task):
