@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 Creator: Marshall Fate
 Date: 2017/3/15
@@ -75,14 +76,3 @@ class Finder:
 if __name__ == '__main__':
     finder = Finder()
     finder.run()
-
-
-
-
-
-
-    # log_directory = ['D:\work\work_stuff\log\mts', ]
-    # file_partten = '.*\.txt'
-    # files = list(find_files_with_mtime(log_directory, file_partten))
-    #
-    # sorted_files = sorted(files, key=lambda files: files[1], reverse=True)

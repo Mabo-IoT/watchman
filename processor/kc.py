@@ -2,7 +2,7 @@
 
 import pendulum
 from logbook import Logger
-
+from redis import StrictRedis
 log = Logger("mts_station_mpt")
 
 
@@ -14,6 +14,10 @@ class Outputer:
         self.eqpt_no = config_conf["eqpt_no"]
         self.status_set = conf['processor'][processor]['status']
         self.status_mapping = {'run': 1, 'stop': 0}
+        self.redis = StrictRedis(host='localhost',
+                                 port=6379,
+                                 db=1,
+                                 socket_timeout=3)
         pass
 
     def message_process(self, msgline, task, measurement):
@@ -41,6 +45,9 @@ class Outputer:
 
         status = self.get_status(message)
         script_name = Outputer.get_script_name(message)
+
+        # load task.
+        task = self.redis.execute_command('hget task name')
 
         influx_json = self.construct_json(time, message, measurement,
                                           status, script_name, task=task)
