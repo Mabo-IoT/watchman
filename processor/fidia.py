@@ -12,21 +12,29 @@ class Outputer(object):
         processor_conf = conf['processor'][processor]
         self.seq = 0
         self.nodename = processor_conf["config"]["nodename"]
-        self.eqpt_no = processor_conf["config"]["eqpt_no"]
+        #self.eqpt_no = processor_conf["config"]["eqpt_no"]
+        self.eqpt_no = None
         self.level = processor_conf['level']
 
         self.status_set = processor_conf['status']
         self.status_map = {'error': 2, 'running': 1, 'stop': 0}
 
         rawstr = r"""L O G    F I L E    C R E A T E D    O N   << (.*) >>"""
+        rawstr2 = r"""L O G    F I L E    O F   << (.*) >>"""
+        self.compile_obj2 = re.compile(rawstr2)
         self.compile_obj = re.compile(rawstr)
         self.current_date = None
 
     def get_date(self, line):
         # common variables
         match_obj = self.compile_obj.search(line)
+        match_obj2 = self.compile_obj2.search(line)
         if match_obj:
             group_1 = match_obj.group(1)
+            d = pendulum.from_format(group_1, '%d-%b-%Y')
+            self.current_date = d.to_date_string()
+        if match_obj2:
+            group_1 = match_obj2.group(1)
             d = pendulum.from_format(group_1, '%d-%b-%Y')
             self.current_date = d.to_date_string()
 
@@ -50,7 +58,8 @@ class Outputer(object):
             if level == 3:
                 status = 2
             data = status, level, message, code
-
+            if level is None:
+                return 2, 'wrong format', None
             influx_json = self.construct_json(time, data, measurement, task=task)
 
             process_rtn = 0
@@ -64,13 +73,15 @@ class Outputer(object):
         fields = {"Msg": data[2],
                   "status": data[0],
                   "Code": data[-1],
-                  "Level": self.level[data[1]],
+                  "FLevel": self.level[data[1]],
                   "task": task,
                   }
 
         tags = {
+            'Level':self.level[data[1]],
             "node": self.nodename,
             "eqpt_no": self.eqpt_no, }
+
         dt_str = "{}T{}".format(self.current_date, time)
 
         dt = pendulum.from_format(dt_str, '%Y-%m-%dT%H:%M:%S', 'Asia/Shanghai')

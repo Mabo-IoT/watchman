@@ -279,7 +279,7 @@ class Watcher(object):
             unit = pack_to_byte(unit)
 
             lua_info = self.redis.enqueue(timestamp=timestamp, tags=tags,
-                                          fields=fields, measurement=measurement, unit=unit)
+                                       fields=fields, measurement=measurement, unit=unit)
             log.info('send data to redis,{}'.format(lua_info))
             return 0
         if method == 'influxdb':
