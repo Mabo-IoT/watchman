@@ -12,7 +12,7 @@ class Outputer(object):
         processor_conf = conf['processor'][processor]
         self.seq = 0
         self.nodename = processor_conf["config"]["nodename"]
-        #self.eqpt_no = processor_conf["config"]["eqpt_no"]
+
         self.eqpt_no = None
         self.level = processor_conf['level']
 
@@ -32,11 +32,14 @@ class Outputer(object):
         if match_obj:
             group_1 = match_obj.group(1)
             d = pendulum.from_format(group_1, '%d-%b-%Y')
-            self.current_date = d.to_date_string()
+            info = Outputer.write_date(d.to_date_string())
+            log.info('wirte? {}'.format(info))
+            pass
         if match_obj2:
             group_1 = match_obj2.group(1)
             d = pendulum.from_format(group_1, '%d-%b-%Y')
-            self.current_date = d.to_date_string()
+            info = Outputer.write_date(d.to_date_string())
+            log.info('wirte? {}'.format(info))
 
     def message_process(self, msg_line, task, measurement, ):
         self.seq += 1
@@ -78,11 +81,12 @@ class Outputer(object):
                   }
 
         tags = {
-            'Level':self.level[data[1]],
+            'Level': self.level[data[1]],
             "node": self.nodename,
             "eqpt_no": self.eqpt_no, }
 
-        dt_str = "{}T{}".format(self.current_date, time)
+        current_date = Outputer.read_date()
+        dt_str = "{}T{}".format(current_date, time)
 
         dt = pendulum.from_format(dt_str, '%Y-%m-%dT%H:%M:%S', 'Asia/Shanghai')
         payload = {"tags": tags,
@@ -113,3 +117,31 @@ class Outputer(object):
         task = re.search(rawstr, message).groups()[0]
 
         return task
+
+    @staticmethod
+    def write_date(date_string):
+        """
+        
+        :param date_string: pendulum date structure dt's  time string
+        :return: if file write operation succed, return 'good',else return 'bad'
+        """
+        try:
+            with open('time_records', 'w', encoding='utf8') as f:
+                f.write(date_string)
+            info = 'good'
+        except Exception as e:
+            log.error(e)
+            info = 'bad'
+        return info
+
+    @staticmethod
+    def read_date():
+        """
+        read time records
+        :return: pendulum date time string.
+        """
+
+        with open('time_records', 'r') as f:
+            time_string = f.read()
+
+        return time_string
