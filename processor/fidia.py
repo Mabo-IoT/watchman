@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import re
-
+import codecs
 import pendulum
 from logbook import Logger
 
@@ -50,6 +50,10 @@ class Outputer(object):
         if msg_line.startswith(str_character):
             data = msg_line.split(' ', 3)
             _, time, code, message = data
+
+            time_message = self.check_time(time)
+            if time_message == 'bad_time_log':
+                return 2, 'time is not good', None
 
             status = self.calculate_status(message, )
             try:
@@ -126,7 +130,7 @@ class Outputer(object):
         :return: if file write operation succed, return 'good',else return 'bad'
         """
         try:
-            with open('time_records', 'w', encoding='utf8') as f:
+            with codecs.open('time_records', 'w', encoding='utf8') as f:
                 f.write(date_string)
             info = 'good'
         except Exception as e:
@@ -141,7 +145,23 @@ class Outputer(object):
         :return: pendulum date time string.
         """
 
-        with open('time_records', 'r') as f:
+        with codecs.open('time_records', 'r') as f:
             time_string = f.read()
 
         return time_string
+
+    def check_time(self, time):
+
+        time = self.make_date(time)
+
+        if time.int_timestamp > pendulum.now().int_timestamp:
+            return 'bad_time_log'
+        else:
+            return 'good_time_log'
+
+    def make_date(self, time):
+        current_date = Outputer.read_date()
+        dt_str = "{}T{}".format(current_date, time)
+
+        dt = pendulum.from_format(dt_str, '%Y-%m-%dT%H:%M:%S', 'Asia/Shanghai')
+        return dt
