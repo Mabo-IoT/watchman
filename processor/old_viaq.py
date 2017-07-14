@@ -11,6 +11,12 @@ class Outputer:
     def __init__(self, conf, processor):
         processor_conf = conf['processor'][processor]
 
+        # eqpt_info
+        self.nodename = processor_conf["config"]["nodename"]
+        self.eqpt_no = processor_conf["config"]["eqpt_no"]
+
+        self.status_set = processor_conf['status']
+        self.status_map = {'error': 2, 'running': 1, 'stop': 0}
         self.seq = 0
 
         # time date
@@ -68,12 +74,24 @@ class Outputer:
 
     def construct_json(self, time, msg, logger, measurement):
 
+        # caculate status
+        status = self.calculate_status(msg)
+
+        # get level
+        level = unify_level_and_status(status)
+
         fields = {
             'Msg': msg,
-            'logger': logger
+            'logger': logger,
+            'status': status,
+            'FLevel': level
         }
 
-        tags = {}
+        tags = {
+            "node": self.nodename,
+            "eqpt_no": self.eqpt_no,
+            'Level': level
+        }
 
         payload = {"tags": tags,
                    "fields": fields,
@@ -87,6 +105,13 @@ class Outputer:
         if self.seq > 1000:
             self.seq = 0
 
+    def calculate_status(self, log_msg, ):
+        for one_set in self.status_set:
+            if log_msg.startswith(tuple(self.status_set[one_set])):
+                status = one_set
+                return self.status_map[status]
+        return None
+
 
 def check_valid(msgline):
     num = len(msgline.split(' ', 2))
@@ -94,3 +119,11 @@ def check_valid(msgline):
         return True
     else:
         return False
+
+
+def unify_level_and_status(status):
+    if status == 2:
+        level = 3
+    else:
+        level = 6
+    return level
