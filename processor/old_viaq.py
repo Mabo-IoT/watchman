@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
+import os
 
 import pendulum
 from logbook import Logger
 
-log = Logger("old_viaq")
+log = Logger("mts_station_mpt")
 
 
 class Outputer:
@@ -19,6 +20,8 @@ class Outputer:
 
         self.seq = 0
 
+        # time date
+        self.current_date = None
         pass
 
     def message_process(self, msgline, task, measurement):
@@ -30,6 +33,8 @@ class Outputer:
         :param measurement: 此实验的表名
         :return: 以influxdb line protocal 组成的字典
         """
+
+        self.current_date = task[0].split(os.sep)[-1][:-4]
 
         if check_valid(msgline):
             # make time
