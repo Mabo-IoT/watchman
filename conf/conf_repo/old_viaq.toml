@@ -1,0 +1,108 @@
+#A logstreamer is a watcher list
+[Logstreamer]
+     [Logstreamer.Viaq]
+        # wating 15s , then rescan this directory.
+        rescan_interval  = "15s"
+
+        # wating 1s , for wating the other colleague(collector)
+        ticker_interval  = 1
+
+        #what time range your needed file is ?
+        #suport units:
+        #s : second  m : minutes  h : hour, d : day  w : week
+        oldest_duration  ="380d"
+
+        #journey file's filename and position
+        journal_directory  = "logstreamer"
+
+        # A directory in which log files reside
+
+#        log_directory = ['D:\work\work_stuff\no-interface-equipment\oldVIAQ\log\test']
+        log_directory = ['D:\work\work_stuff\no-interface-equipment\oldVIAQ\log\REPORT']
+
+        #regular expression of log file. for getting right files.
+
+        file_match =  '\d*\.txt'
+
+        #get task infomation, if it's in the path string.
+        #string is splited by sep symbol(system wise) from 0 on
+        task_position = -1
+
+        #specified the plugin name
+        processor = "ViaqOutput"
+
+        #specifed the mesurement name in fluxdb database.
+        measurement = "ViaqLog"
+        [Logstreamer.Viaq.user_tag]
+
+
+[processor]
+    [processor.ViaqOutput]
+            # the path points to process plugin.
+            processor_path = "processor.old_viaq"
+
+            # the real Outputer name
+            class = "Outputer"
+
+            # fidia's level set.
+            [processor.ViaqOutput.level]
+
+                Information = 6
+                Error = 3
+
+
+            [processor.ViaqOutput.status]
+                error = ['  +']
+                running = [' Start Archiv']
+                stop   = [' Stop Archiv']
+                unknown =[]
+
+            #some user specified tags
+            [processor.ViaqOutput.config]
+
+                nodename = "nodename"
+
+                eqpt_no = "pec0--11"
+
+#log configuration
+[log]
+    # boolean type, if true ,the debug information will print sys.stdout.
+    # if false, the debug information will print to fill we specified.
+    debug = true
+
+    # the derectory in which our log file reside.
+    logfile = "logs/watchman_debug.log"
+
+    # backup log_fie maximum number is 5.
+    backup_count = 5
+
+    # A log files maximum size.if size exceed this, bakcup it.
+    max_size = 10240
+
+    # determine the debug level you want to print.
+    # notset < debug < info < warning < error < critical
+    level = 'debug'
+
+    # format your debug information.
+    # for more infomation, please checkout this site:
+    #       http://logbook.readthedocs.io/en/stable/
+    format_string = '({record.time:%m-%d %H:%M:%S}){record.level_name},channel:{record.channel},line_{record.lineno}: {record.message}'
+
+[data_output]
+
+# specified the output tools, redis or influxdb.
+    which = 'influxdb'
+
+    [data_output.influxdb]
+        host = 'localhost'
+        port = 8085
+        username ="root"
+        password = "root"
+        db = "marshall"
+        time_precison = 'u'
+
+    [data_output.redis]
+        host = 'localhost'
+        port = 6379
+        db   = 0
+        lua  = 'lua_script\enque.lua'
