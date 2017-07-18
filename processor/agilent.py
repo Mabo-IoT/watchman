@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
+import re
 
 import pendulum
 from logbook import Logger
 
-log = Logger("old_viaq")
+log = Logger("mts_station_mpt")
 
 
 class Outputer:
@@ -16,10 +17,8 @@ class Outputer:
 
         self.status_set = processor_conf['status']
         self.status_map = {'error': 2, 'running': 1, 'stop': 0}
-
         self.seq = 0
 
-        pass
 
     def message_process(self, msgline, task, measurement):
         """接受一条日志，解析完成后，取得相应信息，组成influxdb
@@ -30,6 +29,8 @@ class Outputer:
         :param measurement: 此实验的表名
         :return: 以influxdb line protocal 组成的字典
         """
+
+
 
         if check_valid(msgline):
             # make time
@@ -52,20 +53,20 @@ class Outputer:
             return 2, 'wrong format', None
 
     def get_time(self, msgline, ):
-        temp = msgline.split(' ')[0]
-        all_time_str = self.current_date + '-' + temp
-        dt = pendulum.from_format(all_time_str, '%Y%m%d-%H:%M:%S', 'Asia/Shanghai')
+        time_str = msgline.split('\t')[-1]
+
+        dt = pendulum.from_format(time_str, '%H:%M:%S %m/%d/%Y', 'Asia/Shanghai')
 
         return int(dt.float_timestamp) * 1000000 + self.seq
 
     def get_logger(self, msgline):
 
-        logger = msgline.split(' ')[1]
+        logger = msgline.split('\t')[0]
         return logger
 
     def get_msg(self, msgline):
 
-        msgline = msgline.split(':')[3]
+        msgline = msgline.split('\t')[1]
         return msgline
 
     def construct_json(self, time, msg, logger, measurement):
@@ -110,8 +111,9 @@ class Outputer:
 
 
 def check_valid(msgline):
-    num = len(msgline.split(' ', 2))
-    if num == 3:
+    pattern = '.+\t.+\t.+'
+    res = re.match(pattern, msgline)
+    if res:
         return True
     else:
         return False
