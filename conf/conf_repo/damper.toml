@@ -16,13 +16,13 @@
         journal_directory  = "logstreamer"
 
         # A directory in which log files reside
-        log_directory = ['D:\work\work_stuff\log\damper_log']
+        log_directory = ['C:\Users\marshallfate\Desktop\2017.12.8-damper']
 
 
 
         #regular expression of log file. for getting right files.
-#        file_match =  '.*\.log'
-        file_match =  'test_damper.txt'
+        file_match =  '.*\.log'
+#        file_match =  'test_damper.txt'
 
 
         #get task infomation, if it's in the path string.
@@ -105,6 +105,7 @@
         username ="root"
         password = "root"
         db = "marshall"
+        time_precison = 'u'
 
     [data_output.redis]
         host = 'localhost'
