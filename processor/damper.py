@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import re
 import time
-
+import os
 from logbook import Logger
 
 log = Logger("damper")
@@ -40,6 +40,7 @@ class Outputer(object):
 
     def message_process(self, msgline, task, measurement):
         not_valid = Outputer.check_valid(msgline)
+        task = task[0].split(os.sep)[task[-1]][:-4]
         if not_valid:
             influx_json = {
                 "fields": {'msg': msgline},
@@ -82,9 +83,9 @@ class Outputer(object):
 
         influx_json = {"tags": tags,
                        "fields": fields,
-                       "time": 1000000 * int(data["time"]) + self.seq % 1000,
+                       "time": 1000000 * int(time.time()) + self.seq ,
                        "measurement": measurement}
-
+        self.make_seq()
         return 0, 'process successful', influx_json
 
     @staticmethod
@@ -155,6 +156,11 @@ class Outputer(object):
             return True
         else:
             return False
+
+    def make_seq(self, ):
+        self.seq += 1
+        if self.seq > 1000:
+            self.seq = 0
 
 
 def test():
