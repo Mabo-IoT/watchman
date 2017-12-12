@@ -19,7 +19,6 @@ class Outputer:
         self.status_map = {'error': 2, 'running': 1, 'stop': 0}
         self.seq = 0
 
-
     def message_process(self, msgline, task, measurement):
         """接受一条日志，解析完成后，取得相应信息，组成influxdb
         所需字典，返回。
@@ -30,9 +29,8 @@ class Outputer:
         :return: 以influxdb line protocal 组成的字典
         """
 
-
-
         if check_valid(msgline):
+
             # make time
             time_stamp = self.get_time(msgline)
 
