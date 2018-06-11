@@ -80,7 +80,7 @@ class Watcher(object):
         :return:no sense for now
         """
 
-        some = file_name.replace('\\', '-').replace(':', '-')
+        some = file_name.replace('/', '-').replace(':', '-')
         journey_file = os.sep.join([self.logstreamer, self.item + "-(" + some + ')' + self.ext])
 
         if os.path.exists(journey_file) and seek == 0:
@@ -104,12 +104,16 @@ class Watcher(object):
 
         self.logstreamer = "read_recorder"
         base_name = os.path.basename(file_name)
-        some = file_name.replace('\\', '-').replace(':', '-')
-        fn = os.sep.join([self.logstreamer, self.item + "-(" + some + ')' + self.ext])
+        log.debug(file_name)
+        some = file_name.replace('/', '-').replace(':', '-')
+        log.debug(self.item)
+        log.debug(some)
+        fn = os.sep.join([self.logstreamer,self.item + "-(" + some  + ')' + self.ext])
 
         if os.path.exists(fn):
 
             with open(fn, "r") as fileh:
+                fileh.seek(0)
                 journey_dict = json.loads(fileh.read())
             return journey_dict["seek"]
         else:
@@ -149,6 +153,8 @@ class Watcher(object):
         :return: None
         """
         for filename in self.matched_files:
+            present = self.get_seek(filename)
+
             contents = self.read_contents(filename)
             if contents == 'pass':
                 name = os.path.basename(filename)
@@ -176,6 +182,11 @@ class Watcher(object):
 
                     if process_rtn == 2:
                         pass
+                present += len(line)
+                if present > os.stat(filename)[6]:
+                    self.set_seek(filename,0)
+                else:
+                    self.set_seek(filename,present)
 
     def watch(self):
         """读log日志，分行交给processor处理
@@ -206,7 +217,7 @@ class Watcher(object):
 
         present_point = self.get_seek(fn)
 
-        # present_point = 0  # FIXME:this is for debuging !!!
+        #present_point = 0  # FIXME:this is for debuging !!!
         if file_size == present_point:
             log.debug('file_size = present_point')
             return 'pass'
@@ -220,8 +231,8 @@ class Watcher(object):
                 for_read.seek(present_point)
                 contents = for_read.read(file_size - present_point)
 
-        present_point = file_size
-        self.set_seek(fn, present_point)
+        #present_point = file_size
+        # self.set_seek(fn, present_point)
 
         return contents
 
