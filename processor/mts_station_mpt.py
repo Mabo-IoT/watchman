@@ -2,6 +2,7 @@
 import os
 import re
 import time
+import redis
 
 from logbook import Logger
 
@@ -15,7 +16,7 @@ class msg_parser(object):
 
     def __init__(self):
         rawstr = r'^\((.*)\) (.*) \[(.*)\] "(.*)"'
-        self.compile_obj = re.compile(rawstr)
+        self.compile_obj = re.compile(rawstr,flags=re.M)
 
 
 class Outputer(object):
@@ -29,9 +30,10 @@ class Outputer(object):
         self.parser = msg_parser()
 
         # for status.
-        self.status = None
+        self.status = 0
         self.status_map = {'running': 1, 'error': 2, 'stop': 0, 'unknown': 3}
         self.status_set = conf['processor'][processor]['status']
+        self.last_status = self.status
 
         # for level
         self.level = conf['processor'][processor]['level']
@@ -39,7 +41,7 @@ class Outputer(object):
         # for recording
         self.last_timestamp = 0
 
-    def message_process(self, msgline, task_related, measurement):
+    def message_process(self, msgline, task_related, measurement,redis_db):
         """接受一条日志，解析完成后，取得相应信息，组成influxdb
         所需字典，返回。
 
@@ -48,59 +50,50 @@ class Outputer(object):
         :param measurement: 此实验的表名
         :return: 以influxdb line protocal 组成的字典
         """
-
-        not_valid = Outputer.check_valid(msgline)
-        if not_valid:
-            influx_json = {
-                "fields": {'msg': msgline},
-                "time": 1000000 * int(time.time()),
-                "measurement": 'new_issueline'}
-            return 1, 'wrong format.', influx_json
-
+        log.debug(redis_db)
         some_data = self.process_data(msgline)
-        if some_data is None:
-            influx_json = {
-                "fields": {'msg': msgline},
-                "time": 1000000 * int(time.time()),
-                "measurement": 'new_issueline'}
-            return 1, 'wrong format.', influx_json
-
         data = self.build_fields(some_data)
-        filename, self.task_infomation = task_related
+        filename,task_position = task_related
         task = self.get_task(filename)
         # construct influx json.
+        pools = redis.ConnectionPool(host='127.0.0.1', port=6379, db=redis_db, decode_responses=True)
+        rr = redis.Redis(connection_pool=pools)
+
         if "status" in data:
-            fields = {
-                "status": data["status"],
-                "Msg": data["msg"],
-                "logger": data["logger"],
+            status = self.get_status(data["status"],task,redis_db)
+        fields = {
+            "Msg": data["msg"],
+            "logger": data["logger"],
 
-                "task": task,
+            "task": task,
 
-                "FLevel": data["level"]}
-        else:
-            fields = {
-                "Msg": data["msg"],
-                "logger": data["logger"],
+            "FLevel": data["level"]
 
-                "task": task,
-
-                "FLevel": data["level"]
-
-            }
+        }
         tags = {
             "Level": data["level"],
             "eqpt_no": self.eqpt_no,
         }
 
+        # seq value.
+        if rr.llen(task) == 0:
+            seq = 0
+            rr.rpush(task,data["time"])
+        else:
+            if data["time"] == float(rr.lrange(task,-1,-1)[0]):
+                rr.rpush(task,data["time"])
+                seq = rr.llen(task) - 1
+                log.debug(rr.llen(task))
+            else:
+                rr.delete(task)
+                rr.rpush(task,data["time"])
+                seq = 0
+        
         influx_json = {"tags": tags,
                        "fields": fields,
-                       "time": 1000000 * int(data["time"]) + self.seq % 1000,
+                       "time": 1000000 * int(data["time"]) + seq % 1000,
                        "measurement": measurement}
-        # seq value.
-        if self.seq > 10000:
-            self.seq = 0
-        self.seq += 1
+
         return 0, 'process successful', influx_json
 
     @staticmethod
@@ -110,6 +103,21 @@ class Outputer(object):
                 status = one_set
                 return status
         return None
+
+    @staticmethod
+    def get_status(task_status,task,redis_db):
+        pools = redis.ConnectionPool(host='127.0.0.1', port=6379, db=redis_db, decode_responses=True)
+        rr = redis.Redis(connection_pool=pools)
+        if task_status == 0:
+            rr.srem('status', task)
+        elif task_status == 1:
+            rr.sadd('status', task)
+        if task_status == None:
+            return None
+        if rr.scard('status') == 0:
+            return 0
+        else:
+            return 1
 
     def build_fields(self, *args):
         """get raw message, return food influx_json.
@@ -125,23 +133,12 @@ class Outputer(object):
         if str_status is not None:
             self.status = self.status_map[str(str_status)]
             if level == 3:
-                self.status = 2
+                self.status = 0
         else:
             self.status = None
 
-        # for recoding how long between this message and the former.
-        if self.last_timestamp == 0:
-            self.last_timestamp = timestamp
-            duration = 0
-        else:
-            duration = timestamp - self.last_timestamp
-            self.last_timestamp = timestamp
-
         # build message
-        data = {
-            "duration": duration, "time": timestamp,
-            "logger": logger_name, "level": level, "msg": log_msg,
-            "status": self.status}
+        data = { "time": timestamp, "logger": logger_name, "level": level, "msg": log_msg,"status": self.status}
         if self.status is None:
             del data["status"]
 
@@ -163,19 +160,12 @@ class Outputer(object):
         else:
             return None
 
-    @staticmethod
-    def check_valid(msgline):
-
-        if msgline.startswith('***') or msgline.isalpha():
-            log.info('unexpected msg_line, pass.')
-            return True
-        else:
-            return False
 
     def get_task(self, file_absolute_path, ):
 
-        some = self.task_infomation
+        some = -1
         if isinstance(some, int):
+            log.debug(file_absolute_path)
             name = file_absolute_path.split(os.sep)[some]
             # if .xxx ,drop it
             if some == -1:
